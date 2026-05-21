@@ -1,6 +1,6 @@
 # Suraksha-Sarthi
 Unified Disaster Command &amp; Inter-Agency Intelligence Ecosystem
-Here’s a **ready‑to‑paste README.md script** you can drop directly into your repository. It’s clean, simple, and gives your teammates step‑by‑step instructions to clone and push their work:
+
 
 ```markdown
 # Team Project Repository
