@@ -1,0 +1,104 @@
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+const incidentModel = require("../models/incidentModel");
+const { queueOperation } = require("./syncService");
+
+function listIncidents() {
+  return incidentModel.listIncidents();
+}
+
+function createIncident(payload) {
+  // Creates incident and generates media hash from metadata.
+  const {
+    title,
+    description = "",
+    disasterType,
+    lat,
+    lng,
+    address,
+    agencyAssigned,
+    mediaContentBase64,
+    mediaTimestamp,
+    mediaGps,
+    offline = false
+  } = payload;
+
+  if (!title || !disasterType || (lat == null && lng == null && !address)) {
+    const error = new Error("title and disasterType are required, and either lat/lng or address must be provided");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const timestamp = mediaTimestamp || new Date().toISOString();
+  const gps = mediaGps || (lat != null && lng != null ? `${lat},${lng}` : (address || 'unknown'));
+  const material = `${mediaContentBase64 || ""}|${timestamp}|${gps}`;
+  const mediaHash = crypto.createHash("sha256").update(material).digest("hex");
+
+  const result = incidentModel.createIncident({
+    title,
+    description,
+    disasterType,
+    lat: lat != null ? Number(lat) : null,
+    lng: lng != null ? Number(lng) : null,
+    address: address || null,
+    agencyAssigned: agencyAssigned || null,
+    mediaHash,
+    mediaTimestamp: timestamp,
+    mediaGps: gps,
+    mediaRef: null
+  });
+
+  if (offline) {
+    queueOperation("incident", String(result.lastInsertRowid), "create", {
+      title,
+      description,
+      disasterType,
+      lat,
+      lng,
+      address,
+      agencyAssigned,
+      verificationState: "Unverified"
+    });
+  }
+
+  return { id: result.lastInsertRowid, mediaHash };
+}
+
+function attachIncidentMedia(incidentId, file, { timestamp, gps }) {
+  // Attaches uploaded photo and tamper-proof metadata to incident.
+  const incident = incidentModel.getIncidentById(incidentId);
+  if (!incident) {
+    const error = new Error("Incident not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!file) {
+    const error = new Error("photo file is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const mediaTimestamp = timestamp || new Date().toISOString();
+  const mediaGps = gps || `${incident.lat},${incident.lng}`;
+  const fileBytes = fs.readFileSync(file.path);
+  const material = `${fileBytes.toString("base64")}|${mediaTimestamp}|${mediaGps}`;
+  const mediaHash = crypto.createHash("sha256").update(material).digest("hex");
+
+  const mediaRef = path.join("uploads", file.filename).replace(/\\/g, "/");
+  incidentModel.updateIncidentMedia(incidentId, {
+    mediaHash,
+    mediaTimestamp,
+    mediaGps,
+    mediaRef
+  });
+
+  return { incidentId, mediaHash, mediaTimestamp, mediaGps, mediaRef };
+}
+
+module.exports = {
+  listIncidents,
+  createIncident,
+  attachIncidentMedia
+};

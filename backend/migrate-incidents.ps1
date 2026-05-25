@@ -1,0 +1,9 @@
+$ErrorActionPreference = 'Stop'
+
+$db = Join-Path $PSScriptRoot 'data\sdrf.db'
+if (-not (Test-Path $db)) {
+  Write-Output 'No existing database found; nothing to migrate.'
+  exit 0
+}
+
+node -e "const Database = require('better-sqlite3'); const path = require('path'); const db = new Database(path.resolve(process.argv[1])); db.pragma('foreign_keys = OFF'); db.transaction(() => { const cols = db.prepare(\"PRAGMA table_info('incidents')\").all(); const names = cols.map(c => c.name); const hasAddress = names.includes('address'); const latNotNull = cols.find(c => c.name === 'lat')?.notnull === 1; const lngNotNull = cols.find(c => c.name === 'lng')?.notnull === 1; if (hasAddress && !latNotNull && !lngNotNull) { console.log('incidents table already migrated'); return; } db.exec('ALTER TABLE incidents RENAME TO incidents_old'); db.exec(`CREATE TABLE incidents (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  title TEXT NOT NULL,\n  description TEXT,\n  disaster_type TEXT NOT NULL,\n  lat REAL,\n  lng REAL,\n  address TEXT,\n  status TEXT DEFAULT \'New\',\n  agency_assigned TEXT,\n  verification_state TEXT DEFAULT \'Unverified\',\n  verified_by INTEGER,\n  verified_at TEXT,\n  media_hash TEXT,\n  media_timestamp TEXT,\n  media_gps TEXT,\n  media_ref TEXT,\n  created_at TEXT DEFAULT CURRENT_TIMESTAMP,\n  FOREIGN KEY (verified_by) REFERENCES users(id)\n)`); const copyCols = names.filter(n => n !== 'address'); const selectCols = copyCols.map(n => n === 'status' ? 'status' : n).join(', '); const insertCols = copyCols.join(', '); db.exec(`INSERT INTO incidents (${insertCols}) SELECT ${selectCols} FROM incidents_old`); db.exec('DROP TABLE incidents_old'); })(); console.log('incidents migration complete'); db.pragma('foreign_keys = ON');" "$db"

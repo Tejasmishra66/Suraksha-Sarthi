@@ -1,0 +1,16 @@
+{
+  "kits": [
+    {
+      "id": "flood-basics",
+      "title": "Flood Response Basics",
+      "version": "1.0",
+      "localPath": "assets/training_kits/flood_response_basics.pdf"
+    },
+    {
+      "id": "sar-safe",
+      "title": "Search and Rescue Safety",
+      "version": "1.0",
+      "localPath": "assets/training_kits/sar_safety_checklist.pdf"
+    }
+  ]
+}
