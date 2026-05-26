@@ -2,6 +2,10 @@ const env = require("../config/env");
 
 function sendSms(phone, message) {
   // Plugs into Twilio/Gupshup in production; logs in MVP mode.
+  if (!phone) {
+    return { provider: "skipped", sent: false };
+  }
+
   if (!env.twilioEnabled && !env.smsGupshupEnabled) {
     console.log(`[SMS-MOCK] ${phone}: ${message}`);
     return { provider: "mock", sent: true };

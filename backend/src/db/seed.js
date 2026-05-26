@@ -11,25 +11,25 @@ function seedUsers() {
 
   const passwordHash = bcrypt.hashSync("password123", 10);
   const insert = db.prepare(
-    "INSERT INTO users (name, email, password_hash, role, agency) VALUES (?, ?, ?, ?, ?)"
+    "INSERT INTO users (name, email, password_hash, role, agency, phone, address) VALUES (?, ?, ?, ?, ?, ?, ?)"
   );
 
-  insert.run("SDRF Officer", "officer@sdrf.local", passwordHash, "officer", "SDRF");
-  insert.run("Police Head", "police@sdrf.local", passwordHash, "agency_head", "Police");
-  insert.run("Medical Head", "medical@sdrf.local", passwordHash, "agency_head", "Medical");
-  insert.run("Power Grid Head", "utility@sdrf.local", passwordHash, "agency_head", "Utility");
+  insert.run("SDRF Officer", "officer@sdrf.local", passwordHash, "officer", "SDRF", "+919000000000", "HQ, SDRF Campus");
+  insert.run("Police Head", "police@sdrf.local", passwordHash, "agency_head", "Police", "+919000000001", "Police HQ");
+  insert.run("Medical Head", "medical@sdrf.local", passwordHash, "agency_head", "Medical", "+919000000002", "Medical Directorate");
+  insert.run("Power Grid Head", "utility@sdrf.local", passwordHash, "agency_head", "Utility", "+919000000003", "Power Grid Office");
 }
 
 function seedVolunteers() {
   if (hasRows("volunteers")) return;
 
   const insert = db.prepare(
-    "INSERT INTO volunteers (name, phone, lat, lng, capabilities, terrain_restrictions, active) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO volunteers (name, phone, lat, lng, capabilities, terrain_restrictions, department, place, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   );
 
-  insert.run("Asha Verma", "+911111111111", 28.6139, 77.209, "SAR,FMR", "none", 1);
-  insert.run("Kabir Singh", "+912222222222", 28.6239, 77.219, "Medical", "mountain", 1);
-  insert.run("Naina Rao", "+913333333333", 28.5939, 77.189, "Debris,Utility", "flooded", 1);
+  insert.run("Asha Verma", "+911111111111", 28.6139, 77.209, "SAR,FMR", "none", "SDRF", "Shimla", 1);
+  insert.run("Kabir Singh", "+912222222222", 28.6239, 77.219, "Medical", "mountain", "Medical", "Manali", 1);
+  insert.run("Naina Rao", "+913333333333", 28.5939, 77.189, "Debris,Utility", "flooded", "Utility", "Dharamshala", 1);
 }
 
 function seedResources() {
@@ -65,11 +65,35 @@ function seedIncidentsAndTasks() {
   );
 
   const taskInsert = db.prepare(
-    "INSERT INTO tasks (incident_id, title, details, assigned_agency, status, created_by) VALUES (?, ?, ?, ?, ?, ?)"
+    "INSERT INTO tasks (incident_id, title, details, assigned_agency, notification_agencies, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)"
   );
 
-  taskInsert.run(incidentInfo.lastInsertRowid, "Deploy rescue boats", "Cover sectors 9A-9C", "SDRF", "New", 1);
-  taskInsert.run(incidentInfo.lastInsertRowid, "Set up medical camp", "Primary school building", "Medical", "In Progress", 1);
+  taskInsert.run(incidentInfo.lastInsertRowid, "Deploy rescue boats", "Cover sectors 9A-9C", "SDRF", JSON.stringify(["SDRF", "Police"]), "New", 1);
+  taskInsert.run(incidentInfo.lastInsertRowid, "Set up medical camp", "Primary school building", "Medical", JSON.stringify(["Medical"]), "In Progress", 1);
+}
+
+function seedBulletins() {
+  if (hasRows("bulletins")) return;
+
+  const insert = db.prepare("INSERT INTO bulletins (category, message, author_id) VALUES (?, ?, ?)");
+  insert.run("Connectivity", "Temporary satellite link active for field teams.", 1);
+  insert.run("Utility Status", "Power restoration is ongoing in sector 12.", 1);
+}
+
+function seedIntelPins() {
+  if (hasRows("intel_pins")) return;
+
+  const insert = db.prepare("INSERT INTO intel_pins (lat, lon, department, note) VALUES (?, ?, ?, ?)");
+  insert.run(28.6139, 77.209, "Police", "Checkpoint established near main junction.");
+  insert.run(28.6239, 77.215, "Medical", "Mobile clinic parked beside school gate.");
+}
+
+function seedHeartbeats() {
+  if (hasRows("heartbeats")) return;
+
+  const insert = db.prepare("INSERT INTO heartbeats (agency_id, user_id, location, last_seen, status) VALUES (?, ?, ?, ?, ?)");
+  insert.run("SDRF", 1, "HQ command room", new Date().toISOString(), "ONLINE");
+  insert.run("Police", 2, "Control room", new Date(Date.now() - 12 * 60 * 1000).toISOString(), "OFFLINE");
 }
 
 function seedRainfall() {
@@ -85,6 +109,9 @@ function runSeed() {
   seedVolunteers();
   seedResources();
   seedIncidentsAndTasks();
+  seedBulletins();
+  seedIntelPins();
+  seedHeartbeats();
   seedRainfall();
 }
 

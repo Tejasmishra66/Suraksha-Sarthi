@@ -38,9 +38,63 @@ export async function login(payload) {
   return data;
 }
 
+// Fetches the bulletin feed.
+export async function fetchBulletins() {
+  const { data } = await api.get('/bulletins');
+  return data;
+}
+
+// Creates a new bulletin update.
+export async function createBulletin(payload) {
+  const { data } = await api.post('/bulletins', payload);
+  return data;
+}
+
+// Fetches intel pins for the map placeholder.
+export async function fetchIntelPins() {
+  const { data } = await api.get('/intel');
+  return data;
+}
+
+// Creates a new intel pin.
+export async function createIntelPin(payload) {
+  const { data } = await api.post('/intel', payload);
+  return data;
+}
+
+// Fetches the monitored agency status feed.
+export async function fetchStatus() {
+  const { data } = await api.get('/status');
+  return data;
+}
+
+// Records a heartbeat for the signed-in user.
+export async function sendHeartbeat(payload) {
+  const { data } = await api.post('/ping', payload);
+  return data;
+}
+
 // Fetches the current task board for the dashboard view.
 export async function fetchTasks() {
   const { data } = await api.get('/tasks');
+  return data;
+}
+
+// Fetches the agency list used by the task notification picker.
+export async function fetchAgencies() {
+  const { data } = await api.get('/agencies');
+  return data;
+}
+
+// Fetches members registered under a specific agency.
+export async function fetchAgencyMembers(agency) {
+  const { data } = await api.get(`/agencies/${encodeURIComponent(agency)}/members`);
+  return data;
+}
+
+// Registers a new member in a specific agency.
+export async function createAgencyMember(agency, payload) {
+  const { data } = await api.post(`/agencies/${encodeURIComponent(agency)}/members`, payload);
   return data;
 }
 

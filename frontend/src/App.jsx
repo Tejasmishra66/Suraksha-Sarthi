@@ -7,6 +7,10 @@ import Shell from './components/Shell';
 // StatCard removed from dashboard
 import LoginPage from './pages/LoginPage';
 import TaskBoardPage from './pages/TaskBoardPage';
+import AgencyDetailsPage from './pages/AgencyDetailsPage';
+import BulletinFeedPage from './pages/BulletinFeedPage';
+import IntelMapPage from './pages/IntelMapPage';
+import StatusDashboardPage from './pages/StatusDashboardPage';
 import IncidentMapPage from './pages/IncidentMapPage';
 import VolunteerDashboardPage from './pages/VolunteerDashboardPage';
 import { useAuth } from './context/AuthContext';
@@ -32,6 +36,38 @@ export default function App() {
           element={
             <Shell title="Task board">
               <TaskBoardPage />
+            </Shell>
+          }
+        />
+        <Route
+          path="/agency-details"
+          element={
+            <Shell title="Agency details">
+              <AgencyDetailsPage />
+            </Shell>
+          }
+        />
+        <Route
+          path="/bulletins"
+          element={
+            <Shell title="Macro-updates bulletin">
+              <BulletinFeedPage />
+            </Shell>
+          }
+        />
+        <Route
+          path="/intel"
+          element={
+            <Shell title="Intel map">
+              <IntelMapPage />
+            </Shell>
+          }
+        />
+        <Route
+          path="/status"
+          element={
+            <Shell title="Status dashboard">
+              <StatusDashboardPage />
             </Shell>
           }
         />
@@ -74,6 +110,9 @@ function HomeDashboard({ userName }) {
           </Typography>
           <Box sx={{ mt: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <Button component={NavLink} to="/tasks" variant="contained">Open Tasks</Button>
+            <Button component={NavLink} to="/bulletins" variant="outlined">Open Bulletins</Button>
+            <Button component={NavLink} to="/intel" variant="outlined">Open Intel</Button>
+            <Button component={NavLink} to="/status" variant="outlined">Open Status</Button>
             <Button component={NavLink} to="/alerts" variant="outlined">Open Alerts</Button>
             <Button component={NavLink} to="/volunteers" variant="outlined">Open Volunteers</Button>
           </Box>

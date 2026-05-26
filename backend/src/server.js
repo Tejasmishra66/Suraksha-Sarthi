@@ -3,7 +3,7 @@ const env = require("./config/env");
 const { runMigrations } = require("./db/database");
 const { runSeed } = require("./db/seed-runtime");
 const { startEscalationMonitor } = require("./services/alertingService");
-const { startWatchdogMonitor } = require("./services/watchdogServiceV2");
+const { startHeartbeatMonitor } = require("./services/statusService");
 const logger = require("./utils/logger");
 
 function start() {
@@ -12,7 +12,7 @@ function start() {
     runMigrations();
     runSeed();
     startEscalationMonitor();
-    startWatchdogMonitor();
+    startHeartbeatMonitor();
 
     app.listen(env.port, () => {
       logger.info(`SDRF Helping Hands backend listening on port ${env.port}`);

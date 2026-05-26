@@ -1,5 +1,21 @@
 const { db } = require("../db/database");
 
+function parseNotificationAgencies(rawValue) {
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_error) {
+    return String(rawValue)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+}
+
 function listTasks() {
   // Reads tasks with incident context for Kanban board.
   return db
@@ -9,19 +25,23 @@ function listTasks() {
        JOIN incidents i ON i.id = t.incident_id
        ORDER BY t.created_at DESC`
     )
-    .all();
+    .all()
+    .map((row) => ({
+      ...row,
+      notification_agencies: parseNotificationAgencies(row.notification_agencies)
+    }));
 }
 
 function getTaskById(taskId) {
   return db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
 }
 
-function createTask({ incidentId, title, details, assignedAgency, status, createdBy }) {
+function createTask({ incidentId, title, details, assignedAgency, notificationAgencies, status, createdBy }) {
   return db
     .prepare(
-      "INSERT INTO tasks (incident_id, title, details, assigned_agency, status, created_by) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO tasks (incident_id, title, details, assigned_agency, notification_agencies, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)"
     )
-    .run(incidentId, title, details || "", assignedAgency || null, status, createdBy);
+    .run(incidentId, title, details || "", assignedAgency || null, JSON.stringify(notificationAgencies || []), status, createdBy);
 }
 
 function updateTask(taskId, { assignedAgency, status }) {

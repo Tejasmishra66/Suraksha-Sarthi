@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL,
-  agency TEXT
+  agency TEXT,
+  phone TEXT,
+  address TEXT
 );
 
 CREATE TABLE IF NOT EXISTS volunteers (
@@ -16,6 +18,7 @@ CREATE TABLE IF NOT EXISTS volunteers (
   capabilities TEXT NOT NULL,
   terrain_restrictions TEXT,
   active INTEGER DEFAULT 1,
+  place TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -56,11 +59,40 @@ CREATE TABLE IF NOT EXISTS tasks (
   title TEXT NOT NULL,
   details TEXT,
   assigned_agency TEXT,
+  notification_agencies TEXT,
   status TEXT DEFAULT 'New',
   created_by INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (incident_id) REFERENCES incidents(id),
   FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS bulletins (
+  id SERIAL PRIMARY KEY,
+  category TEXT NOT NULL,
+  message TEXT NOT NULL,
+  author_id INTEGER NOT NULL,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (author_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS intel_pins (
+  id SERIAL PRIMARY KEY,
+  lat DOUBLE PRECISION NOT NULL,
+  lon DOUBLE PRECISION NOT NULL,
+  department TEXT NOT NULL,
+  note TEXT NOT NULL,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS heartbeats (
+  id SERIAL PRIMARY KEY,
+  agency_id TEXT NOT NULL,
+  user_id INTEGER,
+  location TEXT,
+  last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status TEXT DEFAULT 'ONLINE',
+  FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS alerts (

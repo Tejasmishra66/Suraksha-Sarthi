@@ -8,10 +8,23 @@ export default function VolunteerDashboardPage() {
   const [volunteers, setVolunteers] = useState([]);
   const [resources, setResources] = useState([]);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ lat: '', lng: '', radiusKm: 10, skills: '' });
+  const [form, setForm] = useState({ lat: '', lng: '', place: '', radiusKm: 10, skills: '' });
 
   useEffect(() => {
     refreshRoster();
+    try {
+      const raw = localStorage.getItem('sdrf_last_alert_coords');
+      if (raw) {
+        const coords = JSON.parse(raw);
+        setForm((current) => ({
+          ...current,
+          lat: current.lat || coords.lat || '',
+          lng: current.lng || coords.lng || ''
+        }));
+      }
+    } catch (_error) {
+      // Ignore malformed local coordinate cache.
+    }
   }, []);
 
   // Loads volunteers and resources together for the operations team.
@@ -58,7 +71,8 @@ export default function VolunteerDashboardPage() {
         lat: Number(e.target.lat.value) || 0,
         lng: Number(e.target.lng.value) || 0,
         capabilities: e.target.capabilities.value || '',
-        department: dept
+        department: dept,
+        place: e.target.place.value || ''
       });
       await refreshRoster();
       e.target.reset();
@@ -114,6 +128,7 @@ export default function VolunteerDashboardPage() {
               <Box component="form" onSubmit={handleAddVolunteer} sx={{ display: 'grid', gap: 1, mb: 2 }}>
                 <TextField name="name" label="Name" size="small" />
                 <TextField name="phone" label="Phone" size="small" />
+                <TextField name="place" label="Place / Area" size="small" />
                 <TextField select name="department" label="Department" size="small">
                   {['SDRF', 'HPEB', 'Police', 'Fire Brigade', 'Other'].map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
                 </TextField>
@@ -131,6 +146,7 @@ export default function VolunteerDashboardPage() {
                     <CardContent>
                       <Typography fontWeight={700}>{volunteer.name}</Typography>
                       <Typography variant="body2" color="text.secondary">{volunteer.role || volunteer.agency}</Typography>
+                      <Typography variant="body2" color="text.secondary">Place: {volunteer.place || 'n/a'}</Typography>
                       <Typography variant="caption">Skills: {volunteer.skills || volunteer.capabilities || 'n/a'}</Typography>
                     </CardContent>
                   </Card>

@@ -10,8 +10,8 @@ function listActiveVolunteers() {
 
 function createVolunteer(data) {
   const stmt = db.prepare(
-    `INSERT INTO volunteers (name, phone, lat, lng, capabilities, terrain_restrictions, department, active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO volunteers (name, phone, lat, lng, capabilities, terrain_restrictions, department, place, active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   return stmt.run(
     data.name,
@@ -21,6 +21,7 @@ function createVolunteer(data) {
     data.capabilities,
     data.terrain_restrictions || null,
     data.department || null,
+    data.place || null,
     data.active ? 1 : 1
   );
 }

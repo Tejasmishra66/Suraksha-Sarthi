@@ -25,6 +25,9 @@ export default function Shell({ title, children }) {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Button component={NavLink} to="/" color="inherit">Home</Button>
             <Button component={NavLink} to="/tasks" color="inherit">Tasks</Button>
+            <Button component={NavLink} to="/bulletins" color="inherit">Bulletins</Button>
+            <Button component={NavLink} to="/intel" color="inherit">Intel</Button>
+            <Button component={NavLink} to="/status" color="inherit">Status</Button>
             <Button component={NavLink} to="/alerts" color="inherit">Alerts</Button>
             <Button component={NavLink} to="/volunteers" color="inherit">Volunteers</Button>
             <Typography variant="body2" sx={{ px: 1 }}>

@@ -6,6 +6,12 @@ import L from 'leaflet';
 import { createAlert, fetchAlerts, createIncident, uploadIncidentMedia } from '../api/client';
 import { addToQueue } from '../utils/offlineQueue';
 
+const HIMACHAL_CENTER = [31.1048, 77.1734];
+const HIMACHAL_BOUNDS = [
+  [30.2, 75.6],
+  [33.5, 79.6]
+];
+
 // Fix leaflet default marker icon paths when using Vite.
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -98,6 +104,7 @@ export default function IncidentMapPage() {
   }
 
   function handleMapSelect(latlng) {
+    localStorage.setItem('sdrf_last_alert_coords', JSON.stringify({ lat: latlng.lat.toFixed(6), lng: latlng.lng.toFixed(6) }));
     setForm((c) => ({ ...c, lat: latlng.lat.toFixed(6), lng: latlng.lng.toFixed(6) }));
   }
 
@@ -162,7 +169,14 @@ export default function IncidentMapPage() {
             <CardContent>
               <Typography variant="h6" fontWeight={800} gutterBottom>Incident Map</Typography>
               <div style={{ height: 480 }}>
-                <MapContainer center={[20.5937, 78.9629]} zoom={5} style={{ height: '100%', width: '100%' }}>
+                <MapContainer
+                  center={HIMACHAL_CENTER}
+                  zoom={8}
+                  minZoom={7}
+                  maxBounds={HIMACHAL_BOUNDS}
+                  maxBoundsViscosity={1}
+                  style={{ height: '100%', width: '100%' }}
+                >
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                   <LocationSelector onSelect={handleMapSelect} />
                   {alerts.map((alert) => (

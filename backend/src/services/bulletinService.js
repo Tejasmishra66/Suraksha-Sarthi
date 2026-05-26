@@ -1,32 +1,37 @@
 const bulletinModel = require("../models/bulletinModel");
 
+const ALLOWED_CATEGORIES = ["Connectivity", "Utility Status", "Medical Support"];
+
 function listBulletins() {
   return bulletinModel.listBulletins();
 }
 
-function createBulletin(payload, createdBy) {
-  // Creates macro update with category tags and optional intel pin.
-  const { title, body, category, pinned = false, lat = null, lng = null } = payload;
-  if (!title || !body || !category) {
-    const error = new Error("title, body, category are required");
+function createBulletin(payload, authorId) {
+  // Creates a macro-update bulletin for the shared operations feed.
+  const { category, message } = payload;
+  if (!category || !message) {
+    const error = new Error("category and message are required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!ALLOWED_CATEGORIES.includes(category)) {
+    const error = new Error("Invalid bulletin category");
     error.statusCode = 400;
     throw error;
   }
 
   const result = bulletinModel.createBulletin({
-    title,
-    body,
     category,
-    pinned,
-    lat,
-    lng,
-    createdBy
+    message,
+    authorId
   });
 
-  return { id: result.lastInsertRowid };
+  return { id: result.lastInsertRowid, category, message };
 }
 
 module.exports = {
   listBulletins,
-  createBulletin
+  createBulletin,
+  ALLOWED_CATEGORIES
 };

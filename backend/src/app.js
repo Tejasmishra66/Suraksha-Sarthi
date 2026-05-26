@@ -16,6 +16,10 @@ const resourceRoutes = require("./routes/resourceRoutes");
 const syncRoutes = require("./routes/syncRoutes");
 const incidentRoutes = require("./routes/incidentRoutes");
 const bulletinRoutes = require("./routes/bulletinRoutes");
+const agencyRoutes = require("./routes/agencyRoutes");
+const agencyMemberRoutes = require("./routes/agencyMemberRoutes");
+const intelRoutes = require("./routes/intelRoutes");
+const statusRoutes = require("./routes/statusRoutes");
 
 const app = express();
 
@@ -48,9 +52,13 @@ app.use("/ping", authMiddleware, pingRoutes);
 app.use("/verify", authMiddleware, verifyRoutes);
 app.use("/volunteers", authMiddleware, volunteerRoutes);
 app.use("/resources", authMiddleware, resourceRoutes);
+app.use("/agencies", authMiddleware, agencyRoutes);
+app.use("/agencies", authMiddleware, agencyMemberRoutes);
+app.use("/bulletins", authMiddleware, bulletinRoutes);
+app.use("/intel", authMiddleware, intelRoutes);
 app.use("/sync", authMiddleware, syncRoutes);
 app.use("/incidents", authMiddleware, incidentRoutes);
-app.use("/bulletins", authMiddleware, bulletinRoutes);
+app.use("/status", authMiddleware, statusRoutes);
 
 app.use(errorHandler);
 
