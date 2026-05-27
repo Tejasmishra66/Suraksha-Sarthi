@@ -14,6 +14,7 @@ import StatusDashboardPage from './pages/StatusDashboardPage';
 import IncidentMapPage from './pages/IncidentMapPage';
 import VolunteerDashboardPage from './pages/VolunteerDashboardPage';
 import { useAuth } from './context/AuthContext';
+import Home from './pages/Home';
 
 // Builds the router and top-level landing experience for the web app.
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<Home/>} />
       <Route element={<ProtectedRoute />}>
         <Route
           path="/"
