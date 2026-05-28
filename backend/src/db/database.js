@@ -54,6 +54,9 @@ function runMigrations() {
 
   ensureColumn("users", "phone", "phone TEXT");
   ensureColumn("users", "address", "address TEXT");
+  ensureColumn("users", "department", "department TEXT");
+  ensureColumn("users", "place", "place TEXT");
+  ensureColumn("users", "district", "district TEXT");
   ensureColumn("volunteers", "place", "place TEXT");
   ensureColumn("tasks", "notification_agencies", "notification_agencies TEXT");
   seedAgencyHeadPhones();

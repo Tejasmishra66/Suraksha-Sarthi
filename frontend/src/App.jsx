@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Button, Card, CardContent, Grid, Stack, Typography } from '@mui/material';
-import { Routes, Route, NavLink } from 'react-router-dom';
+import { Navigate, Routes, Route, NavLink } from 'react-router-dom';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import Shell from './components/Shell';
@@ -14,7 +14,6 @@ import StatusDashboardPage from './pages/StatusDashboardPage';
 import IncidentMapPage from './pages/IncidentMapPage';
 import VolunteerDashboardPage from './pages/VolunteerDashboardPage';
 import { useAuth } from './context/AuthContext';
-import Home from './pages/Home';
 
 // Builds the router and top-level landing experience for the web app.
 export default function App() {
@@ -23,10 +22,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/" element={<Home/>} />
+      <Route path="/" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />
       <Route element={<ProtectedRoute />}>
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <Shell title="Operations overview">
               <HomeDashboard userName={user?.name || 'Officer'} />
@@ -90,7 +89,7 @@ export default function App() {
           }
         />
       </Route>
-      {!isAuthenticated && <Route path="*" element={<LoginPage />} />}
+      <Route path="*" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />
     </Routes>
   );
 }

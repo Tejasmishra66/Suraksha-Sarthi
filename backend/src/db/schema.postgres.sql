@@ -5,8 +5,11 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL,
   agency TEXT,
+  department TEXT,
   phone TEXT,
-  address TEXT
+  address TEXT,
+  place TEXT,
+  district TEXT
 );
 
 CREATE TABLE IF NOT EXISTS volunteers (

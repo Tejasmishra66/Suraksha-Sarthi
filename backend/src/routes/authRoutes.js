@@ -28,6 +28,9 @@ router.post("/login", (req, res) => {
       id: user.id,
       role: user.role,
       agency: user.agency,
+      department: user.department,
+      place: user.place,
+      district: user.district,
       name: user.name,
       email: user.email
     },
@@ -42,8 +45,61 @@ router.post("/login", (req, res) => {
       name: user.name,
       role: user.role,
       agency: user.agency,
+      department: user.department,
+      place: user.place,
+      district: user.district,
       email: user.email
     }
+  });
+});
+
+router.post("/register", (req, res) => {
+  const {
+    name,
+    email,
+    password,
+    phone,
+    department,
+    address,
+    place,
+    district
+  } = req.body;
+
+  if (!name || !email || !password || !phone || !department || !address || !place || !district) {
+    return res.status(400).json({
+      message: "name, email, password, phone, department, address, place, and district are required"
+    });
+  }
+
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
+
+  if (existingUser) {
+    return res.status(409).json({ message: "An account with this email already exists" });
+  }
+
+  const passwordHash = bcrypt.hashSync(String(password), 10);
+  const normalizedDepartment = String(department).trim();
+  const result = db
+    .prepare(
+      "INSERT INTO users (name, email, password_hash, role, agency, department, phone, address, place, district) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+    .run(
+      String(name).trim(),
+      normalizedEmail,
+      passwordHash,
+      "member",
+      normalizedDepartment,
+      normalizedDepartment,
+      String(phone).trim(),
+      String(address).trim(),
+      String(place).trim(),
+      String(district).trim()
+    );
+
+  return res.status(201).json({
+    userId: result.lastInsertRowid,
+    message: "Account created successfully"
   });
 });
 
