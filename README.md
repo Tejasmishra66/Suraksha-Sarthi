@@ -81,6 +81,23 @@ This project uses a backend-first disaster operations stack. The table below bre
 
 ## Quick Start
 
+### Run Both Servers Simultaneously (Recommended)
+
+You can start both the backend and frontend together using a single command from the **root directory**.
+
+```powershell
+# 1. Install root dependencies (like concurrently)
+npm install
+
+# 2. Install backend and frontend dependencies
+npm run install:all
+
+# 3. Start both servers!
+npm run dev
+```
+
+### Individual Start
+
 ### Backend
 ```powershell
 cd C:\Users\hp\Suraksha-Sarthi\backend
