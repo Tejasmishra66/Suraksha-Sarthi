@@ -14,5 +14,7 @@ module.exports = {
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN || "",
   twilioFrom: process.env.TWILIO_FROM || "",
   smsGupshupEnabled: String(process.env.SMS_GUPSHUP_ENABLED || "false") === "true",
-  smsGupshupApiKey: process.env.SMS_GUPSHUP_API_KEY || ""
+  smsGupshupApiKey: process.env.SMS_GUPSHUP_API_KEY || "",
+  smsGupshupSource: process.env.SMS_GUPSHUP_SOURCE || "",
+  smsGupshupUrl: process.env.SMS_GUPSHUP_URL || "https://api.gupshup.io/sm/api/v1/msg"
 };
