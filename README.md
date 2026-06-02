@@ -89,8 +89,8 @@ You can start both the backend and frontend together using a single command from
 # 1. Install root dependencies (like concurrently)
 npm install
 
-# 2. Install backend and frontend dependencies
-npm run install:all
+# 2. Setup the environment (installs dependencies, creates .env files, and seeds the database)
+npm run setup
 
 # 3. Start both servers!
 npm run dev
