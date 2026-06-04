@@ -60,6 +60,7 @@ export default function ReportsPage() {
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <TopNavBar />
+<<<<<<< HEAD
       <Box
         sx={{
           backgroundImage: `linear-gradient(90deg, rgba(239,246,255,0.95), rgba(239,246,255,0.65)), url('/assets/heroin.jpg')`,
@@ -111,6 +112,8 @@ export default function ReportsPage() {
           </Grid>
         </Container>
       </Box>
+=======
+>>>>>>> e989cfe2bcc18f846014f035bd635e8ed83f5fc8
 
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
         <Grid container spacing={4}>
@@ -276,6 +279,7 @@ export default function ReportsPage() {
                 ))}
               </Paper>
 
+<<<<<<< HEAD
               <Paper sx={{ p: 3, borderRadius: 4, bgcolor: '#f8fafc' }}>
                 <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Offline Status</Typography>
                 <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
@@ -288,6 +292,8 @@ export default function ReportsPage() {
                 <Button variant="contained" size="small">View Offline Reports (3)</Button>
               </Paper>
 
+=======
+>>>>>>> e989cfe2bcc18f846014f035bd635e8ed83f5fc8
               <Paper sx={{ p: 3, borderRadius: 4 }}>
                 <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Report Guidelines</Typography>
                 <Stack spacing={1} component="ul" sx={{ pl: 2, m: 0, color: 'text.secondary' }}>

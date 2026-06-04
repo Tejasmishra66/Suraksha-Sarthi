@@ -127,7 +127,14 @@ export default function Homepage() {
                 >
                   Report an Emergency
                 </Button>
+<<<<<<< HEAD
                 <Button variant="outlined" color="success" size="large" sx={{ textTransform: 'none', px: 4, py: 1.5, fontWeight: 700 }} onClick={() => navigate('/volunteer')}>
+=======
+                <Button variant="contained" color="success" 
+                  size="large" 
+                  sx={{ textTransform: 'none', px: 4, py: 1.5, fontWeight: 700 }} 
+                  onClick={() => navigate('/volunteer')}>
+>>>>>>> e989cfe2bcc18f846014f035bd635e8ed83f5fc8
                   Volunteer Now
                 </Button>
               </Stack>
