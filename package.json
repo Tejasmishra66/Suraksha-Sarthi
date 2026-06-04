@@ -2,6 +2,9 @@
   "name": "sdrf-helping-hands-root",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0 <24.0.0"
+  },
   "scripts": {
     "install:backend": "npm install --prefix backend",
     "install:frontend": "npm install --prefix frontend",

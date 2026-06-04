@@ -1,125 +1,35 @@
 import React from 'react';
-import { Box, Button, Card, CardContent, Grid, Stack, Typography } from '@mui/material';
-import { Navigate, Routes, Route, NavLink } from 'react-router-dom';
+import { Navigate, Routes, Route } from 'react-router-dom';
 
-import ProtectedRoute from './components/ProtectedRoute';
-import Shell from './components/Shell';
-// StatCard removed from dashboard
-import LoginPage from './pages/LoginPage';
-import TaskBoardPage from './pages/TaskBoardPage';
-import AgencyDetailsPage from './pages/AgencyDetailsPage';
-import BulletinFeedPage from './pages/BulletinFeedPage';
-import IntelMapPage from './pages/IntelMapPage';
-import StatusDashboardPage from './pages/StatusDashboardPage';
+// Import only the 7 required pages
+import Homepage from './pages/Homepage';
+import EmergencyPage from './pages/EmergencyPage';
+import VolunteerPage from './pages/VolunteerPage';
+import ReportsPage from './pages/ReportsPage';
 import IncidentMapPage from './pages/IncidentMapPage';
-import VolunteerDashboardPage from './pages/VolunteerDashboardPage';
-import { useAuth } from './context/AuthContext';
+import EquipmentPage from './pages/EquipmentPage';
+import UpdatesPage from './pages/UpdatesPage';
+import SignupPage from './pages/SignupPage'; // Import the new SignupPage
+import LoginPage from './pages/LoginPage';     // Import the new LoginPage
 
-// Builds the router and top-level landing experience for the web app.
+// Simple, clean routing with only 7 pages
 export default function App() {
-  const { isAuthenticated, user } = useAuth();
-
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />
-      <Route element={<ProtectedRoute />}>
-        <Route
-          path="/dashboard"
-          element={
-            <Shell title="Operations overview">
-              <HomeDashboard userName={user?.name || 'Officer'} />
-            </Shell>
-          }
-        />
-        <Route
-          path="/tasks"
-          element={
-            <Shell title="Task board">
-              <TaskBoardPage />
-            </Shell>
-          }
-        />
-        <Route
-          path="/agency-details"
-          element={
-            <Shell title="Agency details">
-              <AgencyDetailsPage />
-            </Shell>
-          }
-        />
-        <Route
-          path="/bulletins"
-          element={
-            <Shell title="Macro-updates bulletin">
-              <BulletinFeedPage />
-            </Shell>
-          }
-        />
-        <Route
-          path="/intel"
-          element={
-            <Shell title="Intel map">
-              <IntelMapPage />
-            </Shell>
-          }
-        />
-        <Route
-          path="/status"
-          element={
-            <Shell title="Status dashboard">
-              <StatusDashboardPage />
-            </Shell>
-          }
-        />
-        <Route
-          path="/alerts"
-          element={
-            <Shell title="Incident map">
-              <IncidentMapPage />
-            </Shell>
-          }
-        />
-        <Route
-          path="/volunteers"
-          element={
-            <Shell title="Volunteer dashboard">
-              <VolunteerDashboardPage />
-            </Shell>
-          }
-        />
-      </Route>
-      <Route path="*" element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />} />
+      {/* Main 7 Pages */}
+      <Route path="/" element={<Homepage />} />
+      <Route path="/home" element={<Homepage />} />
+      <Route path="/emergency" element={<EmergencyPage />} />
+      <Route path="/volunteer" element={<VolunteerPage />} />
+      <Route path="/reports" element={<ReportsPage />} />
+      <Route path="/map" element={<IncidentMapPage />} />
+      <Route path="/equipment" element={<EquipmentPage />} />
+      <Route path="/updates" element={<UpdatesPage />} />
+      <Route path="/signup" element={<SignupPage />} /> {/* Add route for Signup */}
+      <Route path="/login" element={<LoginPage />} />   {/* Add route for Login */}
+      
+      {/* Fallback - redirect unknown routes to home */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-  );
-}
-
-// Renders the landing dashboard with quick links and summary cards.
-function HomeDashboard({ userName }) {
-  return (
-    <Stack spacing={3}>
-      <Card>
-        <CardContent>
-          <Typography variant="overline" color="text.secondary">
-            Welcome back
-          </Typography>
-          <Typography variant="h4" fontWeight={800} gutterBottom>
-            {userName}
-          </Typography>
-          <Typography color="text.secondary" sx={{ maxWidth: 700 }}>
-            This minimal web console keeps the backend-first disaster workflow visible: tasks, alerts, volunteers, and resources all flow from the existing Express APIs.
-          </Typography>
-          <Box sx={{ mt: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button component={NavLink} to="/tasks" variant="contained">Open Tasks</Button>
-            <Button component={NavLink} to="/bulletins" variant="outlined">Open Bulletins</Button>
-            <Button component={NavLink} to="/intel" variant="outlined">Open Intel</Button>
-            <Button component={NavLink} to="/status" variant="outlined">Open Status</Button>
-            <Button component={NavLink} to="/alerts" variant="outlined">Open Alerts</Button>
-            <Button component={NavLink} to="/volunteers" variant="outlined">Open Volunteers</Button>
-          </Box>
-        </CardContent>
-      </Card>
-      {/* Project metadata removed from main dashboard per UX request */}
-    </Stack>
   );
 }

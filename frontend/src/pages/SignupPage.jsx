@@ -3,7 +3,7 @@ import { Box, Container, Typography, Button, TextField, Stack } from '@mui/mater
 import { useNavigate } from 'react-router-dom';
 import TopNavBar from '../components/TopNavBar';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const navigate = useNavigate();
 
   return (
@@ -12,23 +12,25 @@ export default function LoginPage() {
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <Box sx={{ p: 4, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)', backgroundColor: '#fff' }}>
           <Typography variant="h5" fontWeight={800} sx={{ mb: 3, textAlign: 'center' }}>
-            Login
+            Sign Up
           </Typography>
           <Stack spacing={2}>
+            <TextField fullWidth label="Full Name" />
             <TextField fullWidth label="Email Address" type="email" />
             <TextField fullWidth label="Password" type="password" />
+            <TextField fullWidth label="Confirm Password" type="password" />
             <Button variant="contained" color="success" fullWidth size="large" sx={{ mt: 3 }}>
-              Login
+              Create Account
             </Button>
             <Typography variant="body2" sx={{ textAlign: 'center', mt: 2 }}>
-              Don't have an account?{' '}
+              Already have an account?{' '}
               <Button 
                 variant="text" 
                 color="success" 
-                onClick={() => navigate('/signup')} 
+                onClick={() => navigate('/login')} 
                 sx={{ textTransform: 'none' }}
               >
-                Sign Up
+                Login
               </Button>
             </Typography>
           </Stack>
