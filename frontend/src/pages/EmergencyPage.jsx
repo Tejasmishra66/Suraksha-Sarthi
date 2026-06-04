@@ -168,37 +168,13 @@ export default function EmergencyPage() {
                 <Typography variant="body1" sx={{ maxWidth: 700 }}>Report emergencies, raise alerts and get immediate help from the right teams.</Typography>
               </Stack>
             </Grid>
-<<<<<<< HEAD
-            <Grid item xs={12} md={4}>
-              <Box sx={{ textAlign: { xs: 'left', md: 'right' } }}>
-                <Paper sx={{ display: 'inline-block', p: 2, bgcolor: 'rgba(255,255,255,0.08)' }}>
-                  <Stack spacing={1}>
-                    <Typography variant="subtitle2">24x7 Helpline</Typography>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                      <CallRoundedIcon />
-                      <Box>
-                        <Typography fontWeight={800}>1070</Typography>
-                        <Typography variant="caption">State Emergency Operation Centre</Typography>
-                      </Box>
-                    </Stack>
-                  </Stack>
-                </Paper>
-              </Box>
-            </Grid>
-=======
->>>>>>> e989cfe2bcc18f846014f035bd635e8ed83f5fc8
           </Grid>
         </Container>
       </Box >
 
       {/* TABS + FORM */}
-<<<<<<< HEAD
-      <Container maxWidth="lg" sx={{ mt: -6 }}>
-        <Card sx={{ borderRadius: 3, p: 0 }}>
-=======
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Card sx={{ borderRadius: 3, p: 0, boxShadow: 3 }}>
->>>>>>> e989cfe2bcc18f846014f035bd635e8ed83f5fc8
           <CardContent>
             <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="fullWidth" sx={{ mb: 3 }}>
               <Tab label="Report Emergency" />

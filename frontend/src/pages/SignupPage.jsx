@@ -7,24 +7,6 @@ export default function SignupPage() {
   const navigate = useNavigate();
 
   return (
-<<<<<<< HEAD
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <TopNavBar />
-      <Container maxWidth="sm" sx={{ py: 8 }}>
-        <Box sx={{ p: 4, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)', backgroundColor: '#fff' }}>
-          <Typography variant="h5" fontWeight={800} sx={{ mb: 3, textAlign: 'center' }}>
-            Sign Up
-          </Typography>
-          <Stack spacing={2}>
-            <TextField fullWidth label="Full Name" />
-            <TextField fullWidth label="Email Address" type="email" />
-            <TextField fullWidth label="Password" type="password" />
-            <TextField fullWidth label="Confirm Password" type="password" />
-            <Button variant="contained" color="success" fullWidth size="large" sx={{ mt: 3 }}>
-              Create Account
-            </Button>
-            <Typography variant="body2" sx={{ textAlign: 'center', mt: 2 }}>
-=======
     <Box sx={{ 
       height: '100vh', 
       display: 'flex',
@@ -108,17 +90,12 @@ export default function SignupPage() {
               Create Account
             </Button>
             <Typography variant="body1" fontWeight={600} sx={{ textAlign: 'center', mt: 2, color: '#ffffff' }}>
->>>>>>> e989cfe2bcc18f846014f035bd635e8ed83f5fc8
               Already have an account?{' '}
               <Button 
                 variant="text" 
                 color="success" 
                 onClick={() => navigate('/login')} 
-<<<<<<< HEAD
-                sx={{ textTransform: 'none' }}
-=======
                 sx={{ textTransform: 'none', fontWeight: 800, fontSize: '1rem', color: '#4ade80' }}
->>>>>>> e989cfe2bcc18f846014f035bd635e8ed83f5fc8
               >
                 Login
               </Button>
