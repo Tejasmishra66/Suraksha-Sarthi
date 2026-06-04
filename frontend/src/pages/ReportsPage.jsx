@@ -864,18 +864,6 @@ export default function ReportsPage() {
                 ))}
               </Paper>
 
-              <Paper sx={{ p: 3, borderRadius: 4, bgcolor: '#f8fafc' }}>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Offline Status</Typography>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-                  <Avatar sx={{ bgcolor: '#d1fae5', color: '#047857' }}>↻</Avatar>
-                  <Box>
-                    <Typography fontWeight={700}>You are currently in Offline Mode</Typography>
-                    <Typography variant="body2" color="text.secondary">Reports will be automatically synced when connection is available.</Typography>
-                  </Box>
-                </Stack>
-                <Button variant="contained" size="small">View Offline Reports (3)</Button>
-              </Paper>
-
               <Paper sx={{ p: 3, borderRadius: 4 }}>
                 <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Report Guidelines</Typography>
                 <Stack spacing={1} component="ul" sx={{ pl: 2, m: 0, color: 'text.secondary' }}>
