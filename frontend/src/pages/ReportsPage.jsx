@@ -60,57 +60,6 @@ export default function ReportsPage() {
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <TopNavBar />
-      <Box
-        sx={{
-          backgroundImage: `linear-gradient(90deg, rgba(239,246,255,0.95), rgba(239,246,255,0.65)), url('/assets/heroin.jpg')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          py: { xs: 6, md: 8 },
-        }}
-      >
-        <Container maxWidth="lg">
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={7}>
-              <Stack spacing={2}>
-                <Typography variant="overline" color="primary" fontWeight={700}>Field Reports</Typography>
-                <Typography variant="h3" fontWeight={900} sx={{ maxWidth: 680 }}>
-                  Submit accurate field reports even in offline mode.
-                </Typography>
-                <Typography color="text.secondary" sx={{ maxWidth: 640, fontSize: 18 }}>
-                  All reports are GPS stamped, time locked and photo verified to ensure authentic data. Capture verified observations and sync automatically when internet is available.
-                </Typography>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <Button variant="contained" color="primary" size="large">New Report</Button>
-                  <Button variant="outlined" color="primary" size="large">View Offline Reports</Button>
-                </Stack>
-              </Stack>
-            </Grid>
-            <Grid item xs={12} md={5}>
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 24px 60px rgba(15,23,42,0.08)' }}>
-                <Stack spacing={2}>
-                  {[
-                    { title: 'Offline Mode', subtitle: 'Works without internet', icon: <LayersRoundedIcon sx={{ color: '#0b6b57' }} /> },
-                    { title: 'Fake-Proof Photos', subtitle: 'Capture in-app with GPS & time lock', icon: <InsertPhotoRoundedIcon sx={{ color: '#0b6b57' }} /> },
-                    { title: 'Verified Data', subtitle: 'Accurate, trusted and secure', icon: <CheckCircleRoundedIcon sx={{ color: '#0b6b57' }} /> },
-                    { title: 'Auto Sync', subtitle: 'Reports sync when internet is available', icon: <CloudUploadRoundedIcon sx={{ color: '#0b6b57' }} /> },
-                  ].map((item) => (
-                    <Paper key={item.title} sx={{ p: 2, bgcolor: '#ffffff' }}>
-                      <Stack direction="row" spacing={2} alignItems="center">
-                        <Avatar sx={{ bgcolor: '#dbeafe', color: '#0b6b57' }}>{item.icon}</Avatar>
-                        <Box>
-                          <Typography fontWeight={800}>{item.title}</Typography>
-                          <Typography variant="body2" color="text.secondary">{item.subtitle}</Typography>
-                        </Box>
-                      </Stack>
-                    </Paper>
-                  ))}
-                </Stack>
-              </Paper>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
 
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
         <Grid container spacing={4}>
@@ -274,18 +223,6 @@ export default function ReportsPage() {
                     </Stack>
                   </Paper>
                 ))}
-              </Paper>
-
-              <Paper sx={{ p: 3, borderRadius: 4, bgcolor: '#f8fafc' }}>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Offline Status</Typography>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-                  <Avatar sx={{ bgcolor: '#d1fae5', color: '#047857' }}>↻</Avatar>
-                  <Box>
-                    <Typography fontWeight={700}>You are currently in Offline Mode</Typography>
-                    <Typography variant="body2" color="text.secondary">Reports will be automatically synced when connection is available.</Typography>
-                  </Box>
-                </Stack>
-                <Button variant="contained" size="small">View Offline Reports (3)</Button>
               </Paper>
 
               <Paper sx={{ p: 3, borderRadius: 4 }}>

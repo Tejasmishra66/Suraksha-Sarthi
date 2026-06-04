@@ -75,10 +75,10 @@ export default function VolunteerPage() {
 
       <Box
         sx={{
-          backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,255,255,0.88)), url(${heroImage})`,
+          backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.35)), url(${heroImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center right',
-          py: { xs: 6, md: 10 },
+          py: 1,
         }}
       >
         <Container maxWidth="lg">
@@ -94,7 +94,7 @@ export default function VolunteerPage() {
                 <Button variant="contained" color="success" size="large" sx={{ textTransform: 'none', borderRadius: 3, px: 4 }}>
                   Register as Volunteer
                 </Button>
-                <Button variant="outlined" color="success" size="large" sx={{ textTransform: 'none', borderRadius: 3, px: 4 }}>
+                <Button variant="contained" color="inherit" size="large" sx={{ textTransform: 'none', borderRadius: 3, px: 4, bgcolor: 'rgba(255,255,255,0.9)', fontWeight: 600, '&:hover': { bgcolor: 'white' } }}>
                   Learn More
                 </Button>
               </Stack>
@@ -103,7 +103,7 @@ export default function VolunteerPage() {
         </Container>
       </Box>
 
-      <Container maxWidth="lg" sx={{ py: 8 }}>
+      <Container maxWidth="lg" sx={{ py: 8, mt: 2 }}>
         <Grid container spacing={4}>
           <Grid item xs={12} lg={7}>
             {/* New section for "Find Volunteers Near You" - moved from Hero */}
