@@ -97,8 +97,30 @@ router.post("/register", (req, res) => {
       district ? String(district).trim() : null
     );
 
+  const token = jwt.sign(
+    {
+      id: result.lastInsertRowid,
+      role: "member",
+      agency: normalizedDepartment,
+      department: normalizedDepartment,
+      place: place ? String(place).trim() : null,
+      district: district ? String(district).trim() : null,
+      name: String(name).trim(),
+      email: normalizedEmail
+    },
+    env.jwtSecret,
+    { expiresIn: "12h" }
+  );
+
   return res.status(201).json({
-    userId: result.lastInsertRowid,
+    token,
+    user: {
+      id: result.lastInsertRowid,
+      name: String(name).trim(),
+      role: "member",
+      agency: normalizedDepartment,
+      email: normalizedEmail
+    },
     message: "Account created successfully"
   });
 });
