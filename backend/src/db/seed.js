@@ -102,6 +102,25 @@ function seedRainfall() {
   db.prepare("INSERT INTO rainfall_logs (location, mm) VALUES (?, ?)").run("Sector 12", 86.2);
 }
 
+function seedEquipment() {
+  if (hasRows("equipment")) return;
+  const insert = db.prepare("INSERT INTO equipment (qr_code, name, category, status, lat, lng, current_owner_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  insert.run("EQ-1001", "Heavy Duty Chainsaw", "Tools", "available", 28.6139, 77.209, 1);
+  insert.run("EQ-1002", "Satellite Phone", "Communication", "dispatched", 28.6239, 77.215, 2);
+  insert.run("EQ-1003", "Thermal Drone", "Recon", "available", 28.601, 77.198, 1);
+}
+
+function seedGuides() {
+  if (hasRows("offline_guides")) return;
+  const insert = db.prepare("INSERT INTO offline_guides (title, content, download_url) VALUES (?, ?, ?)");
+  insert.run(
+    "Mountain Rescue Basics", 
+    "Step 1: Check weather. Step 2: Ensure harnesses are secured. Step 3: Map the trail.",
+    "/guides/mountain-rescue.pdf"
+  );
+  insert.run("Flood Evacuation SOP", "1. Sound local alarms. 2. Evacuate low-lying sectors. 3. Deploy rescue boats.", "/guides/flood-sop.pdf");
+}
+
 function runSeed() {
   // Seeds demo records for volunteers/resources/incidents and task board.
   runMigrations();
@@ -113,6 +132,8 @@ function runSeed() {
   seedIntelPins();
   seedHeartbeats();
   seedRainfall();
+  seedEquipment();
+  seedGuides();
 }
 
 runSeed();

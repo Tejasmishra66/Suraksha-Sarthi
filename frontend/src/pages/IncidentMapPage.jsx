@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Avatar,
@@ -14,13 +14,19 @@ import {
   Stack,
   TextField,
   Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  Checkbox,
+  FormControlLabel,
+  Divider,
 } from '@mui/material';
+import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import TopNavBar from '../components/TopNavBar';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
-import { createAlert, fetchAlerts, createIncident, uploadIncidentMedia } from '../api/client';
-import { addToQueue } from '../utils/offlineQueue';
+import { fetchAlerts } from '../api/client';
 
 const HIMACHAL_CENTER = [31.1048, 77.1734];
 const HIMACHAL_BOUNDS = [
@@ -36,106 +42,113 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-function LocationSelector({ onSelect }) {
-  useMapEvents({
-    click(e) {
-      onSelect(e.latlng);
-    },
+const getSeverityColor = (severity) => {
+  const s = severity?.toLowerCase();
+  if (s === 'high' || s === 'critical') return '#ef4444'; // Red
+  if (s === 'medium') return '#f59e0b'; // Orange
+  return '#3b82f6'; // Blue
+};
+
+const getDisasterIcon = (type) => {
+  const t = (type || '').toLowerCase();
+  if (t.includes('fire')) return '🔥';
+  if (t.includes('medical')) return '🚑';
+  if (t.includes('flood') || t.includes('water')) return '🌊';
+  if (t.includes('landslide') || t.includes('earthquake')) return '⛰️';
+  if (t.includes('natural')) return '🌪️';
+  if (t.includes('accident')) return '💥';
+  return '⚠️';
+};
+
+const createMarkerIcon = (severity, type) => {
+  const color = getSeverityColor(severity);
+  const icon = getDisasterIcon(type);
+  return L.divIcon({
+    className: 'custom-severity-marker',
+    html: `<div style="background-color: ${color}; width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 16px;">${icon}</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
   });
+};
+
+const SDRF_OFFICES = [
+  { id: 'sdrf-hq', name: 'SDRF Headquarters', location: 'Shimla', lat: 31.1048, lng: 77.1734 },
+  { id: 'sdrf-mandi', name: 'SDRF Mandi Unit', location: 'Mandi', lat: 31.7087, lng: 76.9315 },
+  { id: 'sdrf-kangra', name: 'SDRF Kangra Unit', location: 'Dharamshala (Kangra region)', lat: 32.2190, lng: 76.3234 },
+];
+
+const createSdrfIcon = () => {
+  return L.divIcon({
+    className: 'custom-sdrf-marker',
+    html: `<div style="background-color: #059669; width: 28px; height: 28px; border-radius: 6px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 14px; color: white;">🛡️</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+  });
+};
+
+function GPSController({ coords }) {
+  const map = useMap();
+  useEffect(() => {
+    if (coords) {
+      map.flyTo([coords.lat, coords.lng], 14, { animate: true });
+    }
+  }, [coords, map]);
   return null;
 }
 
+const getWeatherCondition = (code) => {
+  if (code === 0) return { label: 'Clear Sky', icon: '☀️' };
+  if (code >= 1 && code <= 3) return { label: 'Partly Cloudy', icon: '⛅' };
+  if (code === 45 || code === 48) return { label: 'Fog', icon: '🌫️' };
+  if ((code >= 51 && code <= 55) || (code >= 61 && code <= 65) || (code >= 80 && code <= 82)) return { label: 'Rain', icon: '🌧️' };
+  if (code >= 71 && code <= 77) return { label: 'Snow', icon: '❄️' };
+  if (code >= 95 && code <= 99) return { label: 'Thunderstorm', icon: '⛈️' };
+  return { label: 'Unknown', icon: '❓' };
+};
+
 export default function IncidentMapPage() {
   const [alerts, setAlerts] = useState([]);
-  const [error, setError] = useState('');
-  const [form, setForm] = useState({ disasterType: 'Flood', lat: '', lng: '', radiusKm: 10, severity: 'medium' });
-  const fileRef = useRef();
+  const [layers, setLayers] = useState({
+    alertFlood: true,
+    alertLandslide: true,
+    alertFire: true,
+    alertAccident: true,
+    alertMedical: true,
+    alertOther: true,
+  });
+  const [gpsFlyTo, setGpsFlyTo] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
   useEffect(() => {
     refreshAlerts();
+    fetchWeather();
+
+    // Auto-refresh alerts every 30 seconds
+    const intervalId = setInterval(refreshAlerts, 30000);
+    return () => clearInterval(intervalId);
   }, []);
+
+  async function fetchWeather() {
+    try {
+      // Fetching weather for the center of Himachal Pradesh (31.1048, 77.1734)
+      const res = await fetch(
+        'https://api.open-meteo.com/v1/forecast?latitude=31.1048&longitude=77.1734&current=temperature_2m,weather_code&daily=temperature_2m_max,weather_code&timezone=auto'
+      );
+      const data = await res.json();
+      setWeatherData(data);
+    } catch (err) {
+      console.error('Failed to fetch weather data', err);
+    }
+  }
 
   async function refreshAlerts() {
     try {
       setAlerts(await fetchAlerts());
+      setLastUpdated(new Date());
     } catch (err) {
-      setError(err?.response?.data?.message || 'Could not load alerts');
+      console.error(err?.response?.data?.message || 'Could not load alerts');
     }
-  }
-
-  function handleChange(event) {
-    setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setError('');
-    try {
-      await createAlert({
-        disasterType: form.disasterType,
-        lat: Number(form.lat),
-        lng: Number(form.lng),
-        radiusKm: Number(form.radiusKm),
-        severity: form.severity,
-      });
-      setForm({ disasterType: 'Flood', lat: '', lng: '', radiusKm: 10, severity: 'medium' });
-      await refreshAlerts();
-    } catch (err) {
-      setError(err?.response?.data?.message || 'Could not create alert');
-    }
-  }
-
-  async function handleCreateIncidentWithMedia(e) {
-    e.preventDefault();
-    setError('');
-    try {
-      const incident = await createIncident({
-        title: e.target.title.value || 'Field report',
-        description: e.target.description.value || '',
-        disasterType: form.disasterType,
-        lat: Number(form.lat) || null,
-        lng: Number(form.lng) || null,
-        address: e.target.address?.value || '',
-        agencyAssigned: 'SDRF',
-        offline: false,
-      });
-
-      const file = fileRef.current?.files?.[0];
-      if (file) {
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('metadata', JSON.stringify({ lat: form.lat, lng: form.lng, timestamp: new Date().toISOString() }));
-        await uploadIncidentMedia(incident.id, fd);
-      }
-
-      await refreshAlerts();
-    } catch (err) {
-      setError(err?.response?.data?.message || 'Could not create incident');
-    }
-  }
-
-  function handleMapSelect(latlng) {
-    localStorage.setItem('sdrf_last_alert_coords', JSON.stringify({ lat: latlng.lat.toFixed(6), lng: latlng.lng.toFixed(6) }));
-    setForm((c) => ({ ...c, lat: latlng.lat.toFixed(6), lng: latlng.lng.toFixed(6) }));
-  }
-
-  function handleSaveOffline(e) {
-    e.preventDefault();
-    addToQueue({
-      entityType: 'incident',
-      operation: 'create',
-      payload: {
-        title: e.target.title.value || 'Offline report',
-        description: e.target.description.value || '',
-        disasterType: form.disasterType,
-        lat: Number(form.lat),
-        lng: Number(form.lng),
-        address: e.target.address?.value || '',
-        agencyAssigned: 'SDRF',
-        offline: true,
-      },
-    });
-    setForm({ disasterType: 'Flood', lat: '', lng: '', radiusKm: 10, severity: 'medium' });
   }
 
   const activeAlerts = [
@@ -145,124 +158,160 @@ export default function IncidentMapPage() {
   ];
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#f4faf4' }}>
       <TopNavBar />
-      <Box
-        sx={{
-          backgroundImage: `linear-gradient(135deg, rgba(5,30,19,0.75), rgba(6,40,32,0.4)), url('/assets/heroin.jpg')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          color: '#fff',
-          py: { xs: 8, md: 12 },
-        }}
-      >
-        <Container maxWidth="lg">
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={7}>
-              <Stack spacing={2}>
-                <Typography variant="overline" sx={{ color: '#a7f3d0', fontWeight: 700 }}>Live Map & Alerts</Typography>
-                <Typography variant="h3" fontWeight={900} sx={{ maxWidth: 680 }}>
-                  View real-time situation, disaster zones, alerts and important information on the map.
-                </Typography>
-                <Typography sx={{ maxWidth: 680, color: 'rgba(255,255,255,0.8)', fontSize: 18 }}>
-                  Track Himachal Pradesh state-level hazards, warning pins, rescue teams and weather layers in one unified dashboard.
-                </Typography>
-              </Stack>
-            </Grid>
-            <Grid item xs={12} md={5}>
-              <Paper sx={{ p: 3, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)' }}>
-                <Stack spacing={2}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="subtitle2" sx={{ color: '#bbf7d0' }}>Last Updated</Typography>
-                    <Chip label="Live" color="success" size="small" />
-                  </Stack>
-                  <Typography variant="h6" fontWeight={800}>19 May 2024, 10:30 AM</Typography>
-                  <Typography variant="body2" color="rgba(255,255,255,0.75)">Data refreshed with latest hazard pins, rescue team locations and weather layers.</Typography>
-                </Stack>
-              </Paper>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
 
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
-        <Paper sx={{ p: 2, mb: 4, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} justifyContent="space-between">
-            {['Live Map', 'Alert Zones', 'Warning Pins', 'Weather Layer', 'Department View'].map((item) => (
-              <Button key={item} variant="outlined" sx={{ flex: 1, minWidth: 140, textTransform: 'none' }}>{item}</Button>
-            ))}
-          </Stack>
-        </Paper>
-
         <Grid container spacing={4}>
-          <Grid item xs={12} lg={8}>
+          <Grid item xs={12}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, px: 1 }}>
+              <Typography variant="h6" fontWeight={800} color="#0f172a">
+                Live Operational Map
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
+                <AccessTimeRoundedIcon fontSize="small" />
+                <Typography variant="body2" fontWeight={700}>
+                  Updated: {lastUpdated.toLocaleTimeString()}
+                </Typography>
+              </Box>
+            </Stack>
             <Card sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 20px 40px rgba(15,23,42,0.08)' }}>
               <CardContent sx={{ p: 0 }}>
-                <Box sx={{ height: { xs: 420, md: 640 }, width: '100%' }}>
+                <Box sx={{ height: { xs: 500, md: 720 }, width: '100%' }}>
                   <MapContainer
                     bounds={HIMACHAL_BOUNDS}
                     center={HIMACHAL_CENTER}
                     zoom={8}
-                    minZoom={7}
+                    minZoom={8}
                     maxBounds={HIMACHAL_BOUNDS}
-                    maxBoundsViscosity={1}
+                    maxBoundsViscosity={1.0}
                     style={{ height: '100%', width: '100%' }}
                   >
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    <LocationSelector onSelect={handleMapSelect} />
-                    {alerts.map((alert) => (
-                      <Marker key={alert.id} position={[Number(alert.lat), Number(alert.lng)]}>
+                    <TileLayer 
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    />
+                    <GPSController coords={gpsFlyTo} />
+                    {SDRF_OFFICES.map((office) => (
+                      <Marker 
+                        key={office.id} 
+                        position={[office.lat, office.lng]}
+                        icon={createSdrfIcon()}
+                      >
                         <Popup>
-                          <Typography fontWeight={700}>{alert.disaster_type || alert.disasterType}</Typography>
-                          <div>Severity: {alert.severity}</div>
-                          <div>Radius: {alert.radius_km || alert.radiusKm} km</div>
+                          <Typography fontWeight={800} color="#0f172a">{office.name}</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{office.location}</Typography>
+                          <Chip label="SDRF Base" size="small" sx={{ bgcolor: '#059669', color: '#fff', fontWeight: 700 }} />
                         </Popup>
                       </Marker>
                     ))}
+                    {alerts
+                      .filter((alert) => {
+                        const t = (alert.disaster_type || alert.disasterType || '').toLowerCase();
+                        const isFlood = t.includes('flood') || t.includes('water');
+                        const isLandslide = t.includes('landslide') || t.includes('earthquake');
+                        const isFire = t.includes('fire');
+                        const isAccident = t.includes('accident') || t.includes('crash');
+                        const isMedical = t.includes('medical');
+                        const isOther = !isFlood && !isLandslide && !isFire && !isAccident && !isMedical;
+                        
+                        if (isFlood && layers.alertFlood) return true;
+                        if (isLandslide && layers.alertLandslide) return true;
+                        if (isFire && layers.alertFire) return true;
+                        if (isAccident && layers.alertAccident) return true;
+                        if (isMedical && layers.alertMedical) return true;
+                        if (isOther && layers.alertOther) return true;
+                        return false;
+                      })
+                      .map((alert) => (
+                        <Marker 
+                          key={alert.id} 
+                          position={[Number(alert.lat), Number(alert.lng)]}
+                          icon={createMarkerIcon(alert.severity, alert.disaster_type || alert.disasterType)}
+                        >
+                          <Popup>
+                            <Typography fontWeight={700}>{alert.disaster_type || alert.disasterType}</Typography>
+                            <div>Severity: {alert.severity}</div>
+                            <div>Radius: {alert.radius_km || alert.radiusKm} km</div>
+                          </Popup>
+                        </Marker>
+                      ))}
                   </MapContainer>
                 </Box>
               </CardContent>
             </Card>
+          </Grid>
 
-            <Paper sx={{ mt: 3, p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.06)' }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Map Layers</Typography>
-              <Grid container spacing={2}>
+          <Grid item xs={12} lg={8}>
+            <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)', height: '100%' }}>
+              <Typography variant="h6" fontWeight={800} sx={{ mb: 3 }}>Map Controls & Legend</Typography>
+              
+              <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 1.5 }}>Incident Layers</Typography>
+              <Grid container spacing={2} sx={{ mb: 4 }}>
                 {[
-                  { label: 'Disaster Zones', color: 'error' },
-                  { label: 'Warning Pins', color: 'warning' },
-                  { label: 'Rescue Teams', color: 'success' },
-                  { label: 'Weather Radar', color: 'info' },
+                  { key: 'alertFlood', label: 'Flood Alerts (🌊)', color: 'info' },
+                  { key: 'alertLandslide', label: 'Landslides (⛰️)', color: 'warning' },
+                  { key: 'alertFire', label: 'Fire Incidents (🔥)', color: 'error' },
+                  { key: 'alertAccident', label: 'Accidents (💥)', color: 'warning' },
+                  { key: 'alertMedical', label: 'Medical (🚑)', color: 'error' },
+                  { key: 'alertOther', label: 'Other Incidents (⚠️)', color: 'secondary' },
                 ].map((item) => (
-                  <Grid item xs={12} sm={6} key={item.label}>
-                    <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 3 }}>
-                      <Typography>{item.label}</Typography>
-                      <Chip label="On" size="small" color={item.color} />
+                  <Grid item xs={12} sm={6} md={4} key={item.key}>
+                    <Paper sx={{ px: 2, py: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 3, border: '1px solid #f1f5f9', bgcolor: layers[item.key] ? '#f8fafc' : '#ffffff', transition: 'all 0.2s' }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={layers[item.key]}
+                            onChange={() => setLayers(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                            color={item.color}
+                          />
+                        }
+                        label={<Typography variant="body2" fontWeight={layers[item.key] ? 700 : 500}>{item.label}</Typography>}
+                        sx={{ m: 0, width: '100%' }}
+                      />
                     </Paper>
                   </Grid>
                 ))}
               </Grid>
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 1 }}>Legend</Typography>
-                <Stack spacing={1}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}><Avatar sx={{ bgcolor: '#fee2e2', width: 32, height: 32, mr: 1 }}>!</Avatar><Typography>High Alert Zone</Typography></Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}><Avatar sx={{ bgcolor: '#fef9c3', width: 32, height: 32, mr: 1 }}>⚠️</Avatar><Typography>Warning / Advisory</Typography></Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}><Avatar sx={{ bgcolor: '#d1fae5', width: 32, height: 32, mr: 1 }}>⛑️</Avatar><Typography>Rescue Team</Typography></Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}><Avatar sx={{ bgcolor: '#e0f2fe', width: 32, height: 32, mr: 1 }}>🏕️</Avatar><Typography>Relief Camp</Typography></Box>
-                </Stack>
-              </Box>
+
+              <Divider sx={{ mb: 4 }} />
+
+              <Grid container spacing={4}>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 2 }}>Incident Types</Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>🌊</Typography><Typography variant="body2" fontWeight={600}>Flood</Typography></Box></Grid>
+                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>⛰️</Typography><Typography variant="body2" fontWeight={600}>Landslide</Typography></Box></Grid>
+                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>🔥</Typography><Typography variant="body2" fontWeight={600}>Fire</Typography></Box></Grid>
+                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>💥</Typography><Typography variant="body2" fontWeight={600}>Crash</Typography></Box></Grid>
+                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>🚑</Typography><Typography variant="body2" fontWeight={600}>Medical</Typography></Box></Grid>
+                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>⚠️</Typography><Typography variant="body2" fontWeight={600}>Other</Typography></Box></Grid>
+                  </Grid>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 2 }}>Severity Status</Typography>
+                  <Stack spacing={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}><Box sx={{ bgcolor: '#ef4444', width: 18, height: 18, borderRadius: '50%', mr: 2, boxShadow: '0 2px 6px rgba(239,68,68,0.4)' }}></Box><Typography variant="body2" fontWeight={700}>High / Critical</Typography></Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}><Box sx={{ bgcolor: '#f59e0b', width: 18, height: 18, borderRadius: '50%', mr: 2, boxShadow: '0 2px 6px rgba(245,158,11,0.4)' }}></Box><Typography variant="body2" fontWeight={700}>Medium Alert</Typography></Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}><Box sx={{ bgcolor: '#3b82f6', width: 18, height: 18, borderRadius: '50%', mr: 2, boxShadow: '0 2px 6px rgba(59,130,246,0.4)' }}></Box><Typography variant="body2" fontWeight={700}>Low / Advisory</Typography></Box>
+                  </Stack>
+                </Grid>
+              </Grid>
             </Paper>
           </Grid>
 
           <Grid item xs={12} lg={4}>
-            <Stack spacing={3}>
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.06)' }}>
+            <Stack spacing={4}>
+              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
                   <Typography variant="h6" fontWeight={800}>Active Alerts</Typography>
                   <Button size="small">View All</Button>
                 </Stack>
                 <Stack spacing={2}>
                   {activeAlerts.map((item) => (
-                    <Paper key={item.title} sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}>
+                    <Paper key={item.title} sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc', border: '1px solid #f1f5f9', boxShadow: '0 4px 12px rgba(15,23,42,0.02)' }}>
                       <Stack spacing={1}>
                         <Typography fontWeight={700}>{item.title}</Typography>
                         <Typography variant="caption" color="text.secondary">{item.location}</Typography>
@@ -276,31 +325,45 @@ export default function IncidentMapPage() {
                 </Stack>
               </Paper>
 
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.06)' }}>
+              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                   <Typography variant="h6" fontWeight={800}>Weather Overview</Typography>
                   <Button size="small">View Details</Button>
                 </Stack>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                  <Avatar sx={{ bgcolor: '#dbeafe', color: '#1d4ed8' }}>🌦️</Avatar>
-                  <Box>
-                    <Typography fontWeight={700}>12°C</Typography>
-                    <Typography variant="caption" color="text.secondary">Light Rain</Typography>
-                  </Box>
-                </Stack>
-                <Grid container spacing={1}>
-                  {['Today', 'Tue', 'Wed', 'Thu'].map((day, idx) => (
-                    <Grid item xs={3} key={day}>
-                      <Paper sx={{ p: 1, textAlign: 'center', borderRadius: 2, bgcolor: '#f8fafc' }}>
-                        <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>{day}</Typography>
-                        <Typography variant="subtitle2">{[12,14,13,16][idx]}°C</Typography>
-                      </Paper>
+                {weatherData ? (
+                  <>
+                    <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                      <Avatar sx={{ bgcolor: '#dbeafe', color: '#1d4ed8' }}>
+                        {getWeatherCondition(weatherData.current.weather_code).icon}
+                      </Avatar>
+                      <Box>
+                        <Typography fontWeight={700}>{Math.round(weatherData.current.temperature_2m)}°C</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {getWeatherCondition(weatherData.current.weather_code).label}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                    <Grid container spacing={1}>
+                      {weatherData.daily.time.slice(0, 4).map((time, idx) => {
+                        const date = new Date(time);
+                        const dayName = idx === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
+                        return (
+                          <Grid item xs={3} key={time}>
+                            <Paper sx={{ p: 1, textAlign: 'center', borderRadius: 2, bgcolor: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                              <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>{dayName}</Typography>
+                              <Typography variant="subtitle2">{Math.round(weatherData.daily.temperature_2m_max[idx])}°C</Typography>
+                            </Paper>
+                          </Grid>
+                        );
+                      })}
                     </Grid>
-                  ))}
-                </Grid>
+                  </>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">Loading weather data...</Typography>
+                )}
               </Paper>
 
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.06)' }}>
+              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
                 <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Quick Information</Typography>
                 <Stack spacing={1}>
                   {[

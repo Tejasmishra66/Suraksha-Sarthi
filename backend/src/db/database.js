@@ -60,6 +60,38 @@ function runMigrations() {
   ensureColumn("volunteers", "place", "place TEXT");
   ensureColumn("tasks", "notification_agencies", "notification_agencies TEXT");
   seedAgencyHeadPhones();
+
+  // Initialize tables for Equipment Tracking (Asset Management) and Offline Guides
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS equipment (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      qr_code TEXT UNIQUE,
+      name TEXT,
+      category TEXT,
+      status TEXT DEFAULT 'available', -- available, dispatched, in_use
+      lat REAL,
+      lng REAL,
+      last_scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      current_owner_id INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS equipment_transfers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      equipment_id INTEGER,
+      sender_id INTEGER,
+      receiver_id INTEGER,
+      status TEXT, -- dispatched, confirmed
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS offline_guides (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT,
+      content TEXT,
+      version INTEGER DEFAULT 1,
+      download_url TEXT
+    );
+  `);
 }
 
 module.exports = {

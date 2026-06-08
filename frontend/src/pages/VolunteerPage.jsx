@@ -1,9 +1,13 @@
-﻿import React from 'react';
+﻿﻿﻿﻿import React, { useState, useEffect } from 'react';
 import {
   Avatar,
   Box,
   Button,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   InputAdornment,
   Paper,
@@ -29,10 +33,10 @@ import FireExtinguisherRoundedIcon from '@mui/icons-material/FireExtinguisherRou
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'; // For Communication
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'; // For Logistics
 import FlightRoundedIcon from '@mui/icons-material/FlightRounded'; // For Drone Operator
+import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
+import { fetchVolunteers, createVolunteer, broadcastVolunteers } from '../api/client';
 
 export default function VolunteerPage() {
-  const heroImage = '/assets/heroin.jpg';
-
   const skills = [
     { name: 'Mountain Rescue', icon: <DirectionsRunRoundedIcon /> },
     { name: 'First Aid', icon: <MedicalServicesRoundedIcon /> },
@@ -62,79 +66,111 @@ export default function VolunteerPage() {
     },
   ];
 
-  const volunteers = [
-    { name: 'Rohit Thakur', role: 'Mountain Rescue • First Aid', distance: '2.1 km' },
-    { name: 'Anjali Sharma', role: 'Medical Support • First Aid', distance: '3.4 km' },
-    { name: 'Vikas Negi', role: 'Search & Rescue • Logistics', distance: '5.2 km' },
-    { name: 'Pooja Verma', role: 'Communication • Drone Operator', distance: '6.7 km' },
-  ];
+  const [volunteers, setVolunteers] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: '', phone: '', skills: 'First Aid' });
+  const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [broadcastRadius, setBroadcastRadius] = useState('10');
+
+  useEffect(() => {
+    loadVolunteers();
+  }, []);
+
+  async function loadVolunteers() {
+    try {
+      const data = await fetchVolunteers();
+      setVolunteers(data || []);
+    } catch (e) {
+      console.error('Failed to load volunteers', e);
+    }
+  }
+
+  async function handleRegister() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        try {
+          await createVolunteer({ 
+            ...form, 
+            lat: position.coords.latitude, 
+            lng: position.coords.longitude,
+            active: 1
+          });
+          setOpen(false);
+          setForm({ name: '', phone: '', skills: 'First Aid' });
+          loadVolunteers();
+          alert("Successfully registered with your live location locked!");
+        } catch (e) {
+          console.error('Failed to register', e);
+          alert("Failed to register. Please try again.");
+        }
+      }, () => {
+        alert("Location access is required to register as a responder.");
+      });
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  }
+
+  async function handleBroadcast() {
+    if (!broadcastMsg) return alert("Please enter an emergency message to broadcast.");
+    
+    // Get the commander's current location as the epicenter for the broadcast
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        await broadcastVolunteers({
+          message: broadcastMsg,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          radiusKm: parseInt(broadcastRadius)
+        });
+        alert(`Emergency SMS/Push Broadcast sent to all active volunteers within ${broadcastRadius}km!`);
+        setBroadcastMsg('');
+      } catch (e) {
+        alert("Failed to send broadcast alert.");
+      }
+    });
+  }
 
   return (
     <Box sx={{ minHeight: '100vh', background: '#f4faf4' }}>
       <TopNavBar />
 
-      <Box
-        sx={{
-          backgroundImage: `linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.35)), url(${heroImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center right',
-          py: 1,
-        }}
-      >
-        <Container maxWidth="lg">
-          <Grid container spacing={4} alignItems="center">
-            <Grid item xs={12} md={7}>
-              <Typography variant="h3" fontWeight={900} sx={{ mb: 2, color: '#102f25' }}>
-                Volunteers. Strength in Unity.
-              </Typography>
-              <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 620, mb: 4 }}>
-                Join our network of trained volunteers and be the strength in times of need.
-              </Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <Button variant="contained" color="success" size="large" sx={{ textTransform: 'none', borderRadius: 3, px: 4 }}>
-                  Register as Volunteer
-                </Button>
-                <Button variant="contained" color="inherit" size="large" sx={{ textTransform: 'none', borderRadius: 3, px: 4, bgcolor: 'rgba(255,255,255,0.9)', fontWeight: 600, '&:hover': { bgcolor: 'white' } }}>
-                  Learn More
-                </Button>
-              </Stack>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
+      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2} sx={{ mb: 4 }}>
+          <Typography variant="h4" fontWeight={900} color="#102f25">Volunteer Dashboard</Typography>
+          <Button variant="contained" color="success" size="large" onClick={() => setOpen(true)} sx={{ textTransform: 'none', borderRadius: 3, px: 4 }}>
+            Register as Volunteer
+          </Button>
+        </Stack>
 
-      <Container maxWidth="lg" sx={{ py: 8, mt: 2 }}>
         <Grid container spacing={4}>
           <Grid item xs={12} lg={7}>
-            {/* New section for "Find Volunteers Near You" - moved from Hero */}
             <Paper sx={{ p: 4, borderRadius: 4, mb: 4, boxShadow: '0 20px 40px rgba(15, 40, 20, 0.06)' }}>
               <Typography variant="h6" fontWeight={800} gutterBottom>
-                Find Volunteers Near You
+                Emergency Radius Broadcast
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Instantly ping all registered volunteers near your live location.
               </Typography>
               <Stack spacing={2}>
                 <TextField
                   fullWidth
-                  placeholder="Enter your location"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LocationOnRoundedIcon color="success" />
-                      </InputAdornment>
-                    ),
-                  }}
+                  placeholder="e.g., Need 3 Medics at Sector 9 immediately."
+                  value={broadcastMsg}
+                  onChange={(e) => setBroadcastMsg(e.target.value)}
                 />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField fullWidth select label="Radius" SelectProps={{ native: true }} defaultValue="10 km">
-                    <option value="5 km">5 km</option>
-                    <option value="10 km">10 km</option>
-                    <option value="20 km">20 km</option>
+                  <TextField fullWidth select label="Radius" SelectProps={{ native: true }} value={broadcastRadius} onChange={(e) => setBroadcastRadius(e.target.value)}>
+                    <option value="5">5 km</option>
+                    <option value="10">10 km</option>
+                    <option value="20">20 km</option>
                   </TextField>
-                  <Button variant="contained" color="success" fullWidth startIcon={<SearchRoundedIcon />}>
-                    Search
+                  <Button variant="contained" color="error" fullWidth onClick={handleBroadcast} startIcon={<CampaignRoundedIcon />} sx={{ fontWeight: 800 }}>
+                    Send Broadcast
                   </Button>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  Showing volunteers within 10 km radius
+                  Broadcasts utilize the SMS gateway for guaranteed delivery.
                 </Typography>
               </Stack>
             </Paper>
@@ -237,20 +273,20 @@ export default function VolunteerPage() {
                 <Button size="small" variant="text" sx={{ textTransform: 'none' }}>View All</Button>
               </Stack>
               <Stack spacing={2}>
-                {volunteers.map((volunteer) => (
-                  <Box key={volunteer.name} sx={{ p: 2, borderRadius: 3, border: '1px solid #e6f3ea', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                {volunteers.map((volunteer, idx) => (
+                  <Box key={volunteer.id || idx} sx={{ p: 2, borderRadius: 3, border: '1px solid #e6f3ea', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                     <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
                       <Stack direction="row" spacing={2} alignItems="center">
                         <Avatar sx={{ bgcolor: '#dcfce7', color: '#047857' }}>
-                          {volunteer.name.charAt(0)}
+                          {volunteer.name?.charAt(0) || 'V'}
                         </Avatar>
                         <Box>
-                          <Typography fontWeight={700}>{volunteer.name}</Typography>
-                          <Typography variant="body2" color="text.secondary">{volunteer.role}</Typography>
+                          <Typography fontWeight={700}>{volunteer.name || 'Anonymous'}</Typography>
+                          <Typography variant="body2" color="text.secondary">{volunteer.skills || volunteer.role || 'General'}</Typography>
                         </Box>
                       </Stack>
                       <Typography variant="body2" color="success.main" fontWeight={700} sx={{ flexShrink: 0 }}>
-                        {volunteer.distance}
+                        {volunteer.distance || '2.1 km'}
                       </Typography>
                     </Stack>
                   </Box>
@@ -288,6 +324,20 @@ export default function VolunteerPage() {
           </Grid>
         </Grid>
       </Container>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle fontWeight={800}>Register as Volunteer</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField label="Full Name" fullWidth value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+            <TextField label="Phone Number" fullWidth value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
+            <TextField label="Primary Skills" fullWidth value={form.skills} onChange={e => setForm({...form, skills: e.target.value})} helperText="e.g., First Aid, Mountain Rescue" />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
+          <Button onClick={handleRegister} variant="contained" color="success">Register</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -11,10 +11,7 @@ export default function SignupPage() {
       height: '100vh', 
       display: 'flex',
       flexDirection: 'column',
-      backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.6)), url('/assets/img2.jpg')`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundAttachment: 'fixed',
+      background: 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)', // Deep Forest Green Gradient
       overflow: 'hidden',
     }}>
       <TopNavBar />

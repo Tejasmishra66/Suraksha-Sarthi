@@ -32,6 +32,19 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Intercepts responses to check for expired tokens (401 Unauthorized)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Token has expired or is invalid
+      clearAuthToken();
+      window.location.href = '/login'; // Redirect to login page
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Logs the user in and returns the backend-issued JWT payload.
 export async function login(payload) {
   const { data } = await api.post('/auth/login', payload);
@@ -180,6 +193,31 @@ export async function postQueue(items) {
 
 export async function flushQueue() {
   const { data } = await api.post('/sync/flush');
+  return data;
+}
+
+// Fetches the equipment catalog and live map coordinates
+export async function fetchEquipment() {
+  const { data } = await api.get('/equipment');
+  return data;
+}
+
+// Creates new equipment in the catalog
+export async function createEquipment(payload) {
+  const { data } = await api.post('/equipment', payload);
+  return data;
+}
+
+// Logs a QR code scan for tracking or transferring equipment
+export async function scanEquipment(equipmentId, payload) {
+  // payload expects: { action: 'dispatch' | 'confirm' | 'update_location', lat, lng, receiver_id }
+  const { data } = await api.post(`/equipment/${equipmentId}/scan`, payload);
+  return data;
+}
+
+// Fetches survival guides for offline caching
+export async function fetchGuides() {
+  const { data } = await api.get('/guides');
   return data;
 }
 
