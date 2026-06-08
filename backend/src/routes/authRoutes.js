@@ -65,9 +65,9 @@ router.post("/register", (req, res) => {
     district
   } = req.body;
 
-  if (!name || !email || !password || !phone || !department || !address || !place || !district) {
+  if (!name || !email || !password) {
     return res.status(400).json({
-      message: "name, email, password, phone, department, address, place, and district are required"
+      message: "name, email, and password are required"
     });
   }
 
@@ -79,7 +79,7 @@ router.post("/register", (req, res) => {
   }
 
   const passwordHash = bcrypt.hashSync(String(password), 10);
-  const normalizedDepartment = String(department).trim();
+  const normalizedDepartment = department ? String(department).trim() : null;
   const result = db
     .prepare(
       "INSERT INTO users (name, email, password_hash, role, agency, department, phone, address, place, district) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -91,10 +91,10 @@ router.post("/register", (req, res) => {
       "member",
       normalizedDepartment,
       normalizedDepartment,
-      String(phone).trim(),
-      String(address).trim(),
-      String(place).trim(),
-      String(district).trim()
+      phone ? String(phone).trim() : null,
+      address ? String(address).trim() : null,
+      place ? String(place).trim() : null,
+      district ? String(district).trim() : null
     );
 
   return res.status(201).json({
