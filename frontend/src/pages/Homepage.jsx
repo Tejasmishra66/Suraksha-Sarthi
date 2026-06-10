@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -22,6 +22,7 @@ import CallRoundedIcon from '@mui/icons-material/CallRounded';
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded';
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
+import { fetchAlerts, fetchVolunteers, fetchEquipment } from '../api/client';
 
 const fadeInUp = keyframes`
   from {
@@ -47,6 +48,29 @@ const bounce = keyframes`
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const [stats, setStats] = useState({ alerts: 0, volunteers: 0, equipment: 0 });
+
+  // Fetch the live counts when the homepage loads
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const [alertsRes, volsRes, eqRes] = await Promise.all([
+          fetchAlerts().catch(() => []),       // Catch handles 401 if user isn't logged in yet
+          fetchVolunteers().catch(() => []),
+          fetchEquipment().catch(() => [])
+        ]);
+        
+        setStats({
+          alerts: alertsRes.length,
+          volunteers: volsRes.length,
+          equipment: eqRes.length
+        });
+      } catch (error) {
+        console.error("Error loading stats", error);
+      }
+    }
+    loadStats();
+  }, []);
 
   // Main modules configuration makes it easy to add more features later
   const features = [
@@ -87,9 +111,6 @@ export default function HomePage() {
       {/* Hero Section */}
       <Box
         sx={{
-          backgroundImage: `url('/assets/heroin.jpg')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
           color: 'white',
           minHeight: '100vh',
           display: 'flex',
@@ -97,43 +118,61 @@ export default function HomePage() {
           alignItems: 'center',
           py: { xs: 12, md: 0 },
           textAlign: 'left',
+          overflow: 'hidden',
+          zIndex: 0, // Establishes a new stacking context for the pseudo-element
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundImage: `url('/assets/heroin.jpg')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            zIndex: -1, // Places it behind the content
+          }
         }}
       >
         <Container maxWidth={false} sx={{ px: { xs: 3, md: 8, lg: 12 }, position: 'relative', zIndex: 1 }}>
           <Typography 
             variant="h2" 
-            fontWeight={900} 
             sx={{ 
               opacity: 0,
-              fontSize: { xs: '2rem', md: '3.25rem' },
-              lineHeight: 1.1,
+              fontSize: { xs: '1.75rem', sm: '2.75rem', md: '3.5rem', lg: '4.5rem' },
+              lineHeight: 1.05,
               letterSpacing: '-0.02em',
-              fontStyle: 'italic',
-              animation: `${fadeInUp} 0.8s ease-out forwards`,
-              textShadow: '0 10px 30px rgba(0,0,0,0.5)',
+              animation: `${fadeInUp} 0.8s ease-out 0.1s forwards`,
+              filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))',
             }}
           >
-            <Box component="span" sx={{ color: '#ffffff' }}>TOGETHER,</Box>
-            {' '}
-            <Box component="span" sx={{ color: '#4ade80' }}>WE RISE.</Box>
+            <Box component="span" sx={{ color: '#f8fafc', fontWeight: 900 }}>TOGETHER, </Box>
+            <Box component="span" sx={{ 
+              fontWeight: 900,
+              background: 'linear-gradient(to right, #34d399, #059669)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              display: 'inline-block'
+            }}>WE RISE.</Box>
           </Typography>
           <Typography 
             variant="h2"
-            fontWeight={900} 
             sx={{ 
-              mb: 4, 
+              mb: { xs: 4, md: 6 }, 
               opacity: 0, 
-              fontSize: { xs: '2rem', md: '3.25rem' },
-              lineHeight: 1.1,
+              fontSize: { xs: '1.75rem', sm: '2.75rem', md: '3.5rem', lg: '4.5rem' },
+              lineHeight: 1.05,
               letterSpacing: '-0.02em',
-              fontStyle: 'italic',
-              animation: `${fadeInUp} 0.8s ease-out 0.2s forwards`,
-              textShadow: '0 10px 30px rgba(0,0,0,0.5)',
+              animation: `${fadeInUp} 0.8s ease-out 0.3s forwards`,
+              filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))',
             }}
           >
-            <Box component="span" sx={{ color: '#ffffff' }}>TOGETHER,</Box>
-            {' '}
-            <Box component="span" sx={{ color: '#4ade80' }}>WE SAVE.</Box>
+            <Box component="span" sx={{ color: '#f8fafc', fontWeight: 900 }}>TOGETHER, </Box>
+            <Box component="span" sx={{ 
+              fontWeight: 900,
+              background: 'linear-gradient(to right, #34d399, #059669)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              display: 'inline-block'
+            }}>WE SAVE.</Box>
           </Typography>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Button 
@@ -226,7 +265,7 @@ export default function HomePage() {
             Quick Access
           </Typography>
 
-          <Grid container spacing={4}>
+          <Grid container spacing={4} sx={{ mb: 8 }}>
             {features.map((feature) => (
               <Grid item xs={12} sm={6} md={3} key={feature.title}>
                 <Paper 
@@ -285,6 +324,53 @@ export default function HomePage() {
               </Grid>
             ))}
           </Grid>
+
+          {/* NEW: Live System Overview Mini-Dashboard */}
+          <Paper 
+            sx={{ 
+              p: { xs: 3, md: 5 }, 
+              borderRadius: 4, 
+              boxShadow: '0 18px 40px rgba(15,23,42,0.08)', 
+              border: '1px solid #e2e8f0', 
+              bgcolor: '#ffffff'
+            }}
+          >
+            <Typography variant="h5" fontWeight={900} textAlign="center" sx={{ mb: 4, color: '#0f172a' }}>
+              Live System Overview
+            </Typography>
+            <Grid container spacing={4} sx={{ textAlign: 'center' }}>
+              <Grid item xs={12} sm={4}
+                onClick={() => navigate('/map')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/map'); }}
+                sx={{ cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(1.05)', opacity: 0.8 } }}
+              >
+                <Typography variant="h2" fontWeight={900} color="#ef4444">{stats.alerts}</Typography>
+                <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ letterSpacing: 1, mt: 1 }}>ACTIVE INCIDENTS</Typography>
+              </Grid>
+              <Grid item xs={12} sm={4}
+                onClick={() => navigate('/volunteer')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/volunteer'); }}
+                sx={{ cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(1.05)', opacity: 0.8 } }}
+              >
+                <Typography variant="h2" fontWeight={900} color="#10b981">{stats.volunteers}</Typography>
+                <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ letterSpacing: 1, mt: 1 }}>READY VOLUNTEERS</Typography>
+              </Grid>
+              <Grid item xs={12} sm={4}
+                onClick={() => navigate('/equipment')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/equipment'); }}
+                sx={{ cursor: 'pointer', transition: 'all 0.2s ease', '&:hover': { transform: 'scale(1.05)', opacity: 0.8 } }}
+              >
+                <Typography variant="h2" fontWeight={900} color="#f59e0b">{stats.equipment}</Typography>
+                <Typography variant="subtitle2" fontWeight={800} color="text.secondary" sx={{ letterSpacing: 1, mt: 1 }}>AVAILABLE EQUIPMENT</Typography>
+              </Grid>
+            </Grid>
+          </Paper>
         </Container>
       </Box>
 

@@ -20,13 +20,23 @@ import {
   Checkbox,
   FormControlLabel,
   Divider,
+  Switch,
+  keyframes,
+  InputAdornment
 } from '@mui/material';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import TopNavBar from '../components/TopNavBar';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
 import { fetchAlerts } from '../api/client';
+
+const pulse = keyframes`
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+`;
 
 const HIMACHAL_CENTER = [31.1048, 77.1734];
 const HIMACHAL_BOUNDS = [
@@ -119,6 +129,7 @@ export default function IncidentMapPage() {
   const [gpsFlyTo, setGpsFlyTo] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [alertSearch, setAlertSearch] = useState('');
 
   useEffect(() => {
     refreshAlerts();
@@ -130,10 +141,11 @@ export default function IncidentMapPage() {
   }, []);
 
   async function fetchWeather() {
+    const [lat, lng] = HIMACHAL_CENTER; // Change these to any custom coordinates (e.g. [28.6139, 77.2090] for New Delhi)
     try {
-      // Fetching weather for the center of Himachal Pradesh (31.1048, 77.1734)
+      // Fetching weather for the specified coordinates
       const res = await fetch(
-        'https://api.open-meteo.com/v1/forecast?latitude=31.1048&longitude=77.1734&current=temperature_2m,weather_code&daily=temperature_2m_max,weather_code&timezone=auto'
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=temperature_2m_max,weather_code&timezone=auto`
       );
       const data = await res.json();
       setWeatherData(data);
@@ -151,23 +163,29 @@ export default function IncidentMapPage() {
     }
   }
 
-  const activeAlerts = [
-    { title: 'Heavy Rainfall Warning', location: 'Kullu, Mandi, Shimla', time: '19 May 2024, 09:15 AM', severity: 'High' },
-    { title: 'Landslide Warning', location: 'Kinnaur, Chamba', time: '19 May 2024, 08:40 AM', severity: 'Medium' },
-    { title: 'Rescue Operation Ongoing', location: 'Lahaul & Spiti', time: '19 May 2024, 07:20 AM', severity: 'Low' },
-  ];
+  const filteredAlerts = alerts.filter(alert => {
+    if (!alertSearch) return true;
+    const term = alertSearch.toLowerCase();
+    return (alert.disaster_type || alert.disasterType || '').toLowerCase().includes(term) ||
+           (alert.severity || '').toLowerCase().includes(term);
+  });
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#f4faf4' }}>
       <TopNavBar />
 
-      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
         <Grid container spacing={4}>
-          <Grid item xs={12}>
+          <Grid item xs={12} lg={8}>
+            <Stack spacing={4}>
+              <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, px: 1 }}>
-              <Typography variant="h6" fontWeight={800} color="#0f172a">
-                Live Operational Map
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography variant="h6" fontWeight={800} color="#0f172a">
+                  Live Operational Map
+                </Typography>
+                <Chip label="LIVE STATUS" size="small" color="success" sx={{ fontWeight: 800, animation: `${pulse} 2s infinite` }} />
+              </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
                 <AccessTimeRoundedIcon fontSize="small" />
                 <Typography variant="body2" fontWeight={700}>
@@ -240,9 +258,8 @@ export default function IncidentMapPage() {
                 </Box>
               </CardContent>
             </Card>
-          </Grid>
+              </Box>
 
-          <Grid item xs={12} lg={8}>
             <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)', height: '100%' }}>
               <Typography variant="h6" fontWeight={800} sx={{ mb: 3 }}>Map Controls & Legend</Typography>
               
@@ -257,18 +274,18 @@ export default function IncidentMapPage() {
                   { key: 'alertOther', label: 'Other Incidents (⚠️)', color: 'secondary' },
                 ].map((item) => (
                   <Grid item xs={12} sm={6} md={4} key={item.key}>
-                    <Paper sx={{ px: 2, py: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 3, border: '1px solid #f1f5f9', bgcolor: layers[item.key] ? '#f8fafc' : '#ffffff', transition: 'all 0.2s' }}>
+                    <Paper onClick={() => setLayers(prev => ({ ...prev, [item.key]: !prev[item.key] }))} sx={{ cursor: 'pointer', px: 2, py: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 3, border: '1px solid #f1f5f9', bgcolor: layers[item.key] ? '#f8fafc' : '#ffffff', transition: 'all 0.2s', '&:hover': { borderColor: '#cbd5e1', transform: 'translateY(-2px)' } }}>
                       <FormControlLabel
                         control={
-                          <Checkbox
+                          <Switch
                             size="small"
                             checked={layers[item.key]}
-                            onChange={() => setLayers(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                            onChange={(e) => { e.stopPropagation(); setLayers(prev => ({ ...prev, [item.key]: e.target.checked })); }}
                             color={item.color}
                           />
                         }
                         label={<Typography variant="body2" fontWeight={layers[item.key] ? 700 : 500}>{item.label}</Typography>}
-                        sx={{ m: 0, width: '100%' }}
+                        sx={{ m: 0, width: '100%', pointerEvents: 'none' }}
                       />
                     </Paper>
                   </Grid>
@@ -300,6 +317,7 @@ export default function IncidentMapPage() {
                 </Grid>
               </Grid>
             </Paper>
+            </Stack>
           </Grid>
 
           <Grid item xs={12} lg={4}>
@@ -309,57 +327,86 @@ export default function IncidentMapPage() {
                   <Typography variant="h6" fontWeight={800}>Active Alerts</Typography>
                   <Button size="small">View All</Button>
                 </Stack>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search alerts (e.g. Flood, High)..."
+                value={alertSearch}
+                onChange={(e) => setAlertSearch(e.target.value)}
+                sx={{ mb: 2 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchRoundedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
                 <Stack spacing={2}>
-                  {activeAlerts.map((item) => (
-                    <Paper key={item.title} sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc', border: '1px solid #f1f5f9', boxShadow: '0 4px 12px rgba(15,23,42,0.02)' }}>
-                      <Stack spacing={1}>
-                        <Typography fontWeight={700}>{item.title}</Typography>
-                        <Typography variant="caption" color="text.secondary">{item.location}</Typography>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                          <Typography variant="caption" color="text.secondary">{item.time}</Typography>
-                          <Chip label={item.severity} size="small" color={item.severity === 'High' ? 'error' : item.severity === 'Medium' ? 'warning' : 'success'} />
+                {filteredAlerts.length > 0 ? filteredAlerts.slice(0, 5).map((item) => {
+                    const severityLower = (item.severity || 'medium').toLowerCase();
+                    const chipColor = (severityLower === 'high' || severityLower === 'critical') ? 'error' : severityLower === 'medium' ? 'warning' : 'success';
+                    const borderColor = (severityLower === 'high' || severityLower === 'critical') ? '#ef4444' : severityLower === 'medium' ? '#f59e0b' : '#10b981';
+                    return (
+                      <Paper 
+                        key={item.id} 
+                        onClick={() => setGpsFlyTo({ lat: Number(item.lat), lng: Number(item.lng) })}
+                        sx={{ cursor: 'pointer', p: 2, borderRadius: 3, bgcolor: '#ffffff', borderLeft: `4px solid ${borderColor}`, borderTop: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', boxShadow: '0 4px 12px rgba(15,23,42,0.02)', transition: 'all 0.2s', '&:hover': { transform: 'translateX(4px)', boxShadow: '0 8px 24px rgba(15,23,42,0.06)' } }}
+                      >
+                        <Stack spacing={1}>
+                          <Typography fontWeight={700} sx={{ textTransform: 'capitalize' }}>{item.disaster_type || item.disasterType} Alert</Typography>
+                          <Typography variant="caption" color="text.secondary">Coordinates: {Number(item.lat).toFixed(4)}, {Number(item.lng).toFixed(4)}</Typography>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography variant="caption" color="text.secondary">{new Date(item.created_at || Date.now()).toLocaleDateString()}</Typography>
+                            <Chip label={item.severity || 'Medium'} size="small" color={chipColor} sx={{ textTransform: 'capitalize' }} />
+                          </Stack>
                         </Stack>
-                      </Stack>
-                    </Paper>
-                  ))}
+                      </Paper>
+                    );
+                  }) : (
+                    <Typography variant="body2" color="text.secondary">No active alerts at this time.</Typography>
+                  )}
                 </Stack>
               </Paper>
 
               <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight={800}>Weather Overview</Typography>
-                  <Button size="small">View Details</Button>
-                </Stack>
-                {weatherData ? (
-                  <>
-                    <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                      <Avatar sx={{ bgcolor: '#dbeafe', color: '#1d4ed8' }}>
+                <Box sx={{ p: 3, m: -3, mb: 3, borderRadius: '16px 16px 0 0', background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)', color: 'white' }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                    <Typography variant="h6" fontWeight={800}>Weather Overview</Typography>
+                    <Button size="small" sx={{ color: '#93c5fd' }}>View Details</Button>
+                  </Stack>
+              {weatherData ? (
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff' }}>
                         {getWeatherCondition(weatherData.current.weather_code).icon}
                       </Avatar>
                       <Box>
                         <Typography fontWeight={700}>{Math.round(weatherData.current.temperature_2m)}°C</Typography>
-                        <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: '#bfdbfe' }}>
                           {getWeatherCondition(weatherData.current.weather_code).label}
                         </Typography>
                       </Box>
                     </Stack>
-                    <Grid container spacing={1}>
-                      {weatherData.daily.time.slice(0, 4).map((time, idx) => {
-                        const date = new Date(time);
-                        const dayName = idx === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
-                        return (
-                          <Grid item xs={3} key={time}>
-                            <Paper sx={{ p: 1, textAlign: 'center', borderRadius: 2, bgcolor: '#f8fafc', border: '1px solid #f1f5f9' }}>
-                              <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>{dayName}</Typography>
-                              <Typography variant="subtitle2">{Math.round(weatherData.daily.temperature_2m_max[idx])}°C</Typography>
-                            </Paper>
-                          </Grid>
-                        );
-                      })}
+              ) : (
+                <Typography variant="body2" sx={{ color: '#bfdbfe' }}>Loading weather data...</Typography>
+              )}
+                </Box>
+            
+            {weatherData && (
+              <Grid container spacing={1}>
+                {weatherData.daily.time.slice(0, 4).map((time, idx) => {
+                  const date = new Date(time);
+                  const dayName = idx === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
+                  return (
+                    <Grid item xs={3} key={time}>
+                      <Paper sx={{ p: 1, textAlign: 'center', borderRadius: 2, bgcolor: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                        <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>{dayName}</Typography>
+                        <Typography variant="subtitle2">{Math.round(weatherData.daily.temperature_2m_max[idx])}°C</Typography>
+                      </Paper>
                     </Grid>
-                  </>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">Loading weather data...</Typography>
+                  );
+                })}
+              </Grid>
                 )}
               </Paper>
 

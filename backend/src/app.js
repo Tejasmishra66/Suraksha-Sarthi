@@ -20,6 +20,7 @@ const agencyRoutes = require("./routes/agencyRoutes");
 const agencyMemberRoutes = require("./routes/agencyMemberRoutes");
 const intelRoutes = require("./routes/intelRoutes");
 const statusRoutes = require("./routes/statusRoutes");
+const equipmentRoutes = require("./routes/equipment");
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use("/intel", authMiddleware, intelRoutes);
 app.use("/sync", authMiddleware, syncRoutes);
 app.use("/incidents", authMiddleware, incidentRoutes);
 app.use("/status", authMiddleware, statusRoutes);
+app.use("/equipment", authMiddleware, equipmentRoutes);
 
 app.use(errorHandler);
 

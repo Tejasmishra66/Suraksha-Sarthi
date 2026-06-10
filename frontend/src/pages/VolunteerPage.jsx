@@ -1,4 +1,4 @@
-﻿﻿﻿﻿import React, { useState, useEffect } from 'react';
+﻿﻿﻿﻿﻿﻿import React, { useState, useEffect } from 'react';
 import {
   Avatar,
   Box,
@@ -14,6 +14,10 @@ import {
   Stack,
   TextField,
   Typography,
+  Badge,
+  keyframes,
+  Chip,
+  Autocomplete
 } from '@mui/material';
 import TopNavBar from '../components/TopNavBar';
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded';
@@ -22,6 +26,8 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
+import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded';
 import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded';
 import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
@@ -35,6 +41,12 @@ import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded';
 import FlightRoundedIcon from '@mui/icons-material/FlightRounded'; // For Drone Operator
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
 import { fetchVolunteers, createVolunteer, broadcastVolunteers } from '../api/client';
+
+const pulse = keyframes`
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+`;
 
 export default function VolunteerPage() {
   const skills = [
@@ -71,6 +83,7 @@ export default function VolunteerPage() {
   const [form, setForm] = useState({ name: '', phone: '', skills: 'First Aid' });
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [broadcastRadius, setBroadcastRadius] = useState('10');
+  const [volunteerSearch, setVolunteerSearch] = useState('');
 
   useEffect(() => {
     loadVolunteers();
@@ -131,41 +144,55 @@ export default function VolunteerPage() {
     });
   }
 
+  const filteredVolunteers = volunteers.filter(v => {
+    if (!volunteerSearch) return true;
+    const term = volunteerSearch.toLowerCase();
+    return (v.name || '').toLowerCase().includes(term) ||
+           (v.skills || v.role || '').toLowerCase().includes(term);
+  });
+
   return (
     <Box sx={{ minHeight: '100vh', background: '#f4faf4' }}>
       <TopNavBar />
 
-      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2} sx={{ mb: 4 }}>
-          <Typography variant="h4" fontWeight={900} color="#102f25">Volunteer Dashboard</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="h4" fontWeight={900} color="#102f25">Volunteer Command Center</Typography>
+            <Chip label="LIVE ROSTER" size="small" color="success" sx={{ fontWeight: 800, animation: `${pulse} 2s infinite` }} />
+          </Box>
           <Button variant="contained" color="success" size="large" onClick={() => setOpen(true)} sx={{ textTransform: 'none', borderRadius: 3, px: 4 }}>
             Register as Volunteer
           </Button>
         </Stack>
 
         <Grid container spacing={4}>
-          <Grid item xs={12} lg={7}>
-            <Paper sx={{ p: 4, borderRadius: 4, mb: 4, boxShadow: '0 20px 40px rgba(15, 40, 20, 0.06)' }}>
-              <Typography variant="h6" fontWeight={800} gutterBottom>
-                Emergency Radius Broadcast
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Instantly ping all registered volunteers near your live location.
-              </Typography>
+          <Grid item xs={12} lg={8}>
+            <Paper sx={{ borderRadius: 4, mb: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)', overflow: 'hidden' }}>
+              <Box sx={{ p: 3, background: 'linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)', color: 'white' }}>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <CampaignRoundedIcon sx={{ fontSize: 32 }} />
+                  <Box>
+                    <Typography variant="h6" fontWeight={800}>Emergency Radius Broadcast</Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>Instantly ping all registered volunteers near your live location.</Typography>
+                  </Box>
+                </Stack>
+              </Box>
+              <Box sx={{ p: 3 }}>
               <Stack spacing={2}>
                 <TextField
                   fullWidth
-                  placeholder="e.g., Need 3 Medics at Sector 9 immediately."
+                    placeholder="e.g., Need 3 Medics at Sector 9 immediately. Respond if available."
                   value={broadcastMsg}
                   onChange={(e) => setBroadcastMsg(e.target.value)}
                 />
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                   <TextField fullWidth select label="Radius" SelectProps={{ native: true }} value={broadcastRadius} onChange={(e) => setBroadcastRadius(e.target.value)}>
-                    <option value="5">5 km</option>
-                    <option value="10">10 km</option>
-                    <option value="20">20 km</option>
+                      <option value="5">5 km Radius</option>
+                      <option value="10">10 km Radius</option>
+                      <option value="20">20 km Radius</option>
                   </TextField>
-                  <Button variant="contained" color="error" fullWidth onClick={handleBroadcast} startIcon={<CampaignRoundedIcon />} sx={{ fontWeight: 800 }}>
+                    <Button variant="contained" color="error" fullWidth onClick={handleBroadcast} startIcon={<CampaignRoundedIcon />} sx={{ fontWeight: 800, py: 1.5, fontSize: '1.05rem' }}>
                     Send Broadcast
                   </Button>
                 </Stack>
@@ -173,16 +200,17 @@ export default function VolunteerPage() {
                   Broadcasts utilize the SMS gateway for guaranteed delivery.
                 </Typography>
               </Stack>
+              </Box>
             </Paper>
 
-            <Paper sx={{ p: 4, borderRadius: 4, mb: 4, boxShadow: '0 20px 40px rgba(15, 40, 20, 0.06)' }}>
+            <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, mb: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
               <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>
                 Volunteer Skills
               </Typography>
               <Grid container spacing={2}>
                 {skills.map((skill) => (
-                  <Grid item xs={6} sm={4} key={skill.name}>
-                    <Paper sx={{ p: 2, borderRadius: 3, border: '1px solid #e6f3ea' }}>
+                  <Grid item xs={6} sm={4} md={3} key={skill.name}>
+                    <Paper sx={{ p: 2, borderRadius: 3, border: '1px solid #f1f5f9', transition: 'all 0.2s', '&:hover': { borderColor: '#cbd5e1', transform: 'translateY(-4px)', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' } }}>
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Avatar sx={{ bgcolor: '#def7ec', color: '#047857', width: 38, height: 38 }}>
                           {skill.icon}
@@ -197,7 +225,7 @@ export default function VolunteerPage() {
 
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6}>
-                <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid #e6f3ea' }}>
+                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
                   <Typography variant="subtitle1" fontWeight={800} gutterBottom>
                     How It Works
                   </Typography>
@@ -242,7 +270,7 @@ export default function VolunteerPage() {
                 </Paper>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid #e6f3ea' }}>
+                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
                   <Typography variant="subtitle1" fontWeight={800} gutterBottom>
                     Volunteer Benefits
                   </Typography>
@@ -266,20 +294,45 @@ export default function VolunteerPage() {
             </Grid>
           </Grid>
 
-          <Grid item xs={12} lg={5}>
-            <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid #e6f3ea', boxShadow: '0 20px 40px rgba(15, 40, 20, 0.04)' }}>
+          <Grid item xs={12} lg={4}>
+            <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                 <Typography variant="h6" fontWeight={800}>Active Volunteers</Typography>
-                <Button size="small" variant="text" sx={{ textTransform: 'none' }}>View All</Button>
+                <Chip label={`${filteredVolunteers.length} Ready`} size="small" color="success" sx={{ fontWeight: 700 }} />
               </Stack>
+              
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search by name or skill..."
+                value={volunteerSearch}
+                onChange={(e) => setVolunteerSearch(e.target.value)}
+                sx={{ mb: 3 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchRoundedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
               <Stack spacing={2}>
-                {volunteers.map((volunteer, idx) => (
-                  <Box key={volunteer.id || idx} sx={{ p: 2, borderRadius: 3, border: '1px solid #e6f3ea', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                {filteredVolunteers.length > 0 ? filteredVolunteers.map((volunteer, idx) => (
+                  <Box key={volunteer.id || idx} sx={{ p: 2, borderRadius: 3, border: '1px solid #f1f5f9', transition: 'all 0.2s', '&:hover': { borderColor: '#cbd5e1', transform: 'translateX(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' } }}>
                     <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
                       <Stack direction="row" spacing={2} alignItems="center">
-                        <Avatar sx={{ bgcolor: '#dcfce7', color: '#047857' }}>
-                          {volunteer.name?.charAt(0) || 'V'}
-                        </Avatar>
+                        <Badge
+                          overlap="circular"
+                          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                          variant="dot"
+                          color="success"
+                          sx={{ '& .MuiBadge-badge': { border: '2px solid white', width: 12, height: 12, borderRadius: '50%' } }}
+                        >
+                          <Avatar sx={{ bgcolor: '#dcfce7', color: '#047857' }}>
+                            {volunteer.name?.charAt(0) || 'V'}
+                          </Avatar>
+                        </Badge>
                         <Box>
                           <Typography fontWeight={700}>{volunteer.name || 'Anonymous'}</Typography>
                           <Typography variant="body2" color="text.secondary">{volunteer.skills || volunteer.role || 'General'}</Typography>
@@ -290,10 +343,12 @@ export default function VolunteerPage() {
                       </Typography>
                     </Stack>
                   </Box>
-                ))}
+                )) : (
+                  <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No volunteers found matching your search.</Typography>
+                )}
               </Stack>
             </Paper>
-            <Paper sx={{ p: 3, borderRadius: 4, mt: 4, border: '1px solid #e6f3ea' }}>
+            <Paper sx={{ p: 3, borderRadius: 4, mt: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
               <Typography variant="subtitle1" fontWeight={800} gutterBottom>
                 Resources for Volunteers
               </Typography>
@@ -324,18 +379,61 @@ export default function VolunteerPage() {
           </Grid>
         </Grid>
       </Container>
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={800}>Register as Volunteer</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Full Name" fullWidth value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-            <TextField label="Phone Number" fullWidth value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
-            <TextField label="Primary Skills" fullWidth value={form.skills} onChange={e => setForm({...form, skills: e.target.value})} helperText="e.g., First Aid, Mountain Rescue" />
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden' } }}>
+        <Box sx={{ p: 3, background: 'linear-gradient(135deg, #064e3b 0%, #047857 100%)', color: 'white' }}>
+          <Typography variant="h5" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <VolunteerActivismRoundedIcon fontSize="large" /> Volunteer Registration
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.9, mt: 1 }}>
+            Join the active roster to receive emergency broadcast alerts and assist in live operations.
+          </Typography>
+        </Box>
+        <DialogContent sx={{ p: 4 }}>
+          <Stack spacing={3}>
+            <TextField 
+              label="Full Name" 
+              fullWidth 
+              value={form.name} 
+              onChange={e => setForm({...form, name: e.target.value})} 
+              InputProps={{ startAdornment: <InputAdornment position="start"><PersonRoundedIcon color="action" /></InputAdornment> }}
+            />
+            <TextField 
+              label="Phone Number" 
+              fullWidth 
+              value={form.phone} 
+              onChange={e => setForm({...form, phone: e.target.value})} 
+              InputProps={{ startAdornment: <InputAdornment position="start"><PhoneRoundedIcon color="action" /></InputAdornment> }}
+            />
+            <Autocomplete
+              freeSolo
+              options={skills.map(s => s.name)}
+              value={form.skills}
+              onInputChange={(event, newValue) => setForm({...form, skills: newValue || ''})}
+              renderInput={(params) => (
+                <TextField 
+                  {...params} 
+                  label="Primary Skills" 
+                  fullWidth 
+                  helperText="Select a predefined skill or type your own." 
+                  InputProps={{ 
+                    ...params.InputProps, 
+                    startAdornment: (
+                      <>
+                        <InputAdornment position="start" sx={{ pl: 1 }}><StarRoundedIcon color="action" /></InputAdornment>
+                        {params.InputProps.startAdornment}
+                      </>
+                    )
+                  }}
+                />
+              )}
+            />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
-          <Button onClick={handleRegister} variant="contained" color="success">Register</Button>
+        <DialogActions sx={{ p: 3, pt: 1, bgcolor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+          <Button onClick={() => setOpen(false)} color="inherit" sx={{ fontWeight: 700, px: 3 }}>Cancel</Button>
+          <Button onClick={handleRegister} variant="contained" color="success" startIcon={<LocationOnRoundedIcon />} sx={{ fontWeight: 800, px: 4, py: 1.5, borderRadius: 3, boxShadow: '0 8px 16px rgba(16, 185, 129, 0.3)' }}>
+            Register & Lock GPS
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

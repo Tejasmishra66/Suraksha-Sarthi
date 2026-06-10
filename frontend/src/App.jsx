@@ -12,6 +12,7 @@ import EquipmentPage from './pages/EquipmentPage';
 import UpdatesPage from './pages/UpdatesPage';
 import SignupPage from './pages/SignupPage'; // Import the new SignupPage
 import LoginPage from './pages/LoginPage';     // Import the new LoginPage
+import { getStoredToken } from './api/client';
 
 // Create a global theme to scale down the text size across the entire website
 const theme = createTheme({
@@ -39,6 +40,15 @@ const theme = createTheme({
   },
 });
 
+// Wrapper component to protect routes that require authentication
+function ProtectedRoute({ children }) {
+  const token = getStoredToken();
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
 // Simple, clean routing with only 7 pages
 export default function App() {
   return (
@@ -48,11 +58,46 @@ export default function App() {
         {/* Main 7 Pages */}
         <Route path="/" element={<Homepage />} />
         <Route path="/home" element={<Homepage />} />
-        <Route path="/emergency" element={<EmergencyPage />} />
-        <Route path="/volunteer" element={<VolunteerPage />} />
-        <Route path="/map" element={<IncidentMapPage />} />
-        <Route path="/equipment" element={<EquipmentPage />} />
-        <Route path="/updates" element={<UpdatesPage />} />
+        <Route 
+          path="/emergency" 
+          element={
+            <ProtectedRoute>
+              <EmergencyPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/volunteer" 
+          element={
+            <ProtectedRoute>
+              <VolunteerPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/map" 
+          element={
+            <ProtectedRoute>
+              <IncidentMapPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/equipment" 
+          element={
+            <ProtectedRoute>
+              <EquipmentPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/updates" 
+          element={
+            <ProtectedRoute>
+              <UpdatesPage />
+            </ProtectedRoute>
+          } 
+        />
         <Route path="/signup" element={<SignupPage />} /> {/* Add route for Signup */}
         <Route path="/login" element={<LoginPage />} />   {/* Add route for Login */}
         

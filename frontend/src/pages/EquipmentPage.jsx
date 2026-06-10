@@ -7,10 +7,6 @@ import {
   CardContent,
   Chip,
   Container,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
   Grid,
   Stack,
@@ -22,24 +18,13 @@ import {
   TableRow,
   Typography,
   Paper,
+  Menu,
+  MenuItem,
+  Autocomplete
 } from '@mui/material';
 import TopNavBar from '../components/TopNavBar';
 import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded';
-import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded';
-import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
-import BuildCircleRoundedIcon from '@mui/icons-material/BuildCircleRounded';
-import SensorsRoundedIcon from '@mui/icons-material/SensorsRounded';
-import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
-import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { fetchEquipment, createEquipment, scanEquipment } from '../api/client';
-
-const quickActions = [
-  { title: 'Scan QR Code', subtitle: 'Issue or return equipment', icon: <QrCodeScannerRoundedIcon />, color: 'success' },
-  { title: 'Dispatch', subtitle: 'Send equipment to another unit', icon: <LocalShippingRoundedIcon />, color: 'info' },
-  { title: 'Confirm Receipt', subtitle: 'Confirm received equipment', icon: <AssignmentTurnedInRoundedIcon />, color: 'primary' },
-  { title: 'Maintenance', subtitle: 'Mark equipment under maintenance', icon: <BuildCircleRoundedIcon />, color: 'warning' },
-];
 
 const getStatusColor = (status) => {
   const s = (status || '').toLowerCase();
@@ -50,12 +35,41 @@ const getStatusColor = (status) => {
   return 'default';
 };
 
+const equipmentCategoryMap = {
+  'Inflatable Rescue Boat': 'Water Rescue',
+  'Life Jacket': 'Water Rescue',
+  'First Aid Kit': 'Medical Equipment',
+  'Ropes & Carabiners': 'Climbing & Rope Rescue',
+  'Fire Extinguisher': 'Fire Safety',
+  'Satellite Phone': 'Communication',
+  'Portable Generator': 'Power & Lighting',
+  'High-Capacity Water Pump': 'Water Management',
+  'Heavy-Duty Chainsaw': 'Cutting & Clearing',
+  'Evacuation Stretcher': 'Medical Equipment',
+  'Drone (UAV)': 'Reconnaissance',
+  'Thermal Imaging Camera': 'Reconnaissance',
+  'Hydraulic Rescue Tool (Jaws of Life)': 'Heavy Rescue',
+  'Breathing Apparatus (SCBA)': 'Fire Safety',
+  'Emergency Floodlights': 'Power & Lighting'
+};
+
+const predefinedEquipmentNames = Object.keys(equipmentCategoryMap);
+const predefinedCategories = Array.from(new Set(Object.values(equipmentCategoryMap)));
+
+const predefinedStatuses = [
+  'Available',
+  'In Use',
+  'Maintenance',
+  'Dispatched',
+  'In Transit'
+];
+
 export default function EquipmentPage() {
   const [equipmentRows, setEquipmentRows] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [scanOpen, setScanOpen] = useState(false);
+  const [activeView, setActiveView] = useState('inventory');
   const [scanForm, setScanForm] = useState({ qr_code: '', action: 'scan' });
   const [form, setForm] = useState({ name: '', type: 'Rescue Gear', status: 'Available', location: 'HQ Store', quantity: 1 });
+  const [anchorEl, setAnchorEl] = useState(null);
 
   useEffect(() => {
     loadEquipment();
@@ -73,7 +87,7 @@ export default function EquipmentPage() {
   async function handleAddEquipment() {
     try {
       await createEquipment({ ...form, category: form.type });
-      setOpen(false);
+      setActiveView('inventory');
       setForm({ name: '', type: 'Rescue Gear', status: 'Available', location: 'HQ Store', quantity: 1 });
       loadEquipment();
     } catch (e) {
@@ -92,7 +106,7 @@ export default function EquipmentPage() {
           lng: pos.coords.longitude
         });
         alert("Equipment status updated and location locked!");
-        setScanOpen(false);
+        setActiveView('inventory');
         setScanForm({ qr_code: '', action: 'scan' });
         loadEquipment();
       } catch (e) {
@@ -134,198 +148,218 @@ export default function EquipmentPage() {
       <TopNavBar />
 
       <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} lg={8}>
-            <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Quick Actions</Typography>
-              <Grid container spacing={2}>
-                {quickActions.map((action) => (
-                  <Grid item xs={12} sm={6} key={action.title}>
-                    <Paper 
-                      onClick={() => {
-                         const mapAction = action.title === 'Maintenance' ? 'maintenance' : action.title === 'Dispatch' ? 'dispatch' : action.title === 'Confirm Receipt' ? 'confirm' : 'scan';
-                         setScanForm({ ...scanForm, action: mapAction });
-                         setScanOpen(true);
-                      }}
-                      sx={{ p: 2, borderRadius: 3, display: 'flex', gap: 2, alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 20px rgba(0,0,0,0.06)' } }}
-                    >
-                      <Avatar sx={{ bgcolor: `${action.color}.100`, color: `${action.color}.700` }}>{action.icon}</Avatar>
-                      <Box>
-                        <Typography fontWeight={700}>{action.title}</Typography>
-                        <Typography variant="body2" color="text.secondary">{action.subtitle}</Typography>
-                      </Box>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-            </Paper>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2} sx={{ mb: 4 }}>
+          <Box>
+            {activeView !== 'inventory' && (
+              <Button onClick={() => setActiveView('inventory')} sx={{ mb: 1, textTransform: 'none', fontWeight: 700 }}>← Back to Dashboard</Button>
+            )}
+            <Typography variant="h4" fontWeight={900} color="#102f25">{activeView === 'inventory' ? 'Equipment Dashboard' : activeView === 'add' ? 'Add New Equipment' : 'Scan Equipment'}</Typography>
+          </Box>
+          <Button 
+            variant="contained" 
+            color="success" 
+            size="large"
+            onClick={(e) => setAnchorEl(e.currentTarget)}
+            sx={{ textTransform: 'none', borderRadius: 3, px: 4, fontWeight: 700 }}
+          >
+            Equipment Actions ▾
+          </Button>
+          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)} PaperProps={{ sx: { mt: 1, borderRadius: 2, minWidth: 220, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' } }}>
+            <MenuItem onClick={() => { setAnchorEl(null); setActiveView('add'); }} sx={{ fontWeight: 700, color: '#0b6b57', py: 1.5 }}>+ Add New Equipment</MenuItem>
+            <MenuItem onClick={() => { setAnchorEl(null); setScanForm({ ...scanForm, action: 'scan' }); setActiveView('scan'); }} sx={{ py: 1.5 }}>Scan QR Code</MenuItem>
+            <MenuItem onClick={() => { setAnchorEl(null); setScanForm({ ...scanForm, action: 'dispatch' }); setActiveView('scan'); }} sx={{ py: 1.5 }}>Dispatch to Field</MenuItem>
+            <MenuItem onClick={() => { setAnchorEl(null); setScanForm({ ...scanForm, action: 'confirm' }); setActiveView('scan'); }} sx={{ py: 1.5 }}>Confirm Receipt</MenuItem>
+            <MenuItem onClick={() => { setAnchorEl(null); setScanForm({ ...scanForm, action: 'maintenance' }); setActiveView('scan'); }} sx={{ py: 1.5 }}>Send to Maintenance</MenuItem>
+          </Menu>
+        </Stack>
 
-            <Paper sx={{ mt: 3, p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" justifyContent="space-between">
-                <Box>
-                  <Typography variant="h6" fontWeight={800}>Scan QR Code</Typography>
-                  <Typography variant="body2" color="text.secondary">Scan the QR code on equipment to view details and update status.</Typography>
-                </Box>
-                <Button variant="contained" color="success" onClick={() => setScanOpen(true)} sx={{ textTransform: 'none', px: 4 }}>Scan Tool</Button>
-              </Stack>
-            </Paper>
-
-            <Paper sx={{ mt: 3, p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6" fontWeight={800}>Equipment List</Typography>
-                <Button variant="outlined" color="primary" onClick={() => setOpen(true)} sx={{ textTransform: 'none' }}>+ Add New Tool</Button>
-              </Stack>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Equipment ID</TableCell>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Category</TableCell>
-                      <TableCell>Location</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Last Updated</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {equipmentRows.map((row, idx) => (
-                      <TableRow key={row.id || idx} hover>
-                        <TableCell>{row.qr_code || `EQ-${row.id}`}</TableCell>
-                        <TableCell>{row.name || 'Unknown Item'}</TableCell>
-                        <TableCell>{row.type || row.category || 'General'}</TableCell>
-                        <TableCell>{row.lat ? `Lat: ${row.lat.toFixed(3)}` : 'HQ Store'}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={row.status || 'Available'}
-                            size="small"
-                            color={getStatusColor(row.status || 'Available')}
-                            sx={{ textTransform: 'capitalize', fontWeight: 600 }}
-                          />
-                        </TableCell>
-                        <TableCell>{new Date(row.last_scanned_at || row.updated_at || Date.now()).toLocaleDateString()}</TableCell>
+        {activeView === 'inventory' && (
+          <Grid container spacing={3}>
+            <Grid item xs={12} lg={8}>
+              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
+                <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Equipment List</Typography>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Equipment ID</TableCell>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Category</TableCell>
+                        <TableCell>Location</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Last Updated</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </Grid>
-
-          <Grid item xs={12} lg={4}>
-            <Stack spacing={3}>
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight={800}>Recent Activity</Typography>
-                  <Button size="small" sx={{ textTransform: 'none' }}>View All</Button>
-                </Stack>
-                <Stack spacing={2}>
-                  {dynamicRecentActivity.length > 0 ? dynamicRecentActivity.map((item) => (
-                    <Paper key={item.title} sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}>
-                      <Typography fontWeight={700}>{item.title}</Typography>
-                      <Typography variant="caption" color="text.secondary">{item.user} · {item.time}</Typography>
-                    </Paper>
-                  )) : (
-                    <Typography variant="body2" color="text.secondary">No recent activity.</Typography>
-                  )}
-                </Stack>
+                    </TableHead>
+                    <TableBody>
+                      {equipmentRows.map((row, idx) => (
+                        <TableRow key={row.id || idx} hover>
+                          <TableCell>{row.qr_code || `EQ-${row.id}`}</TableCell>
+                          <TableCell>{row.name || 'Unknown Item'}</TableCell>
+                          <TableCell>{row.type || row.category || 'General'}</TableCell>
+                          <TableCell>{row.lat ? `Lat: ${row.lat.toFixed(3)}` : 'HQ Store'}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={row.status || 'Available'}
+                              size="small"
+                              color={getStatusColor(row.status || 'Available')}
+                              sx={{ textTransform: 'capitalize', fontWeight: 600 }}
+                            />
+                          </TableCell>
+                          <TableCell>{new Date(row.last_scanned_at || row.updated_at || Date.now()).toLocaleDateString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               </Paper>
+            </Grid>
 
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Equipment by Category</Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}> 
-                  {categoryStats.length > 0 ? categoryStats.map((item) => (
-                    <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, borderRadius: 2, bgcolor: '#f8fafc' }}>
-                      <Avatar sx={{ bgcolor: item.color, width: 10, height: 10 }} />
-                      <Box>
-                        <Typography variant="body2">{item.label}</Typography>
-                        <Typography variant="caption" color="text.secondary">{item.value}</Typography>
+            <Grid item xs={12} lg={4}>
+              <Stack spacing={3}>
+                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                    <Typography variant="h6" fontWeight={800}>Recent Activity</Typography>
+                    <Button size="small" sx={{ textTransform: 'none' }}>View All</Button>
+                  </Stack>
+                  <Stack spacing={2}>
+                    {dynamicRecentActivity.length > 0 ? dynamicRecentActivity.map((item) => (
+                      <Paper key={item.title} sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}>
+                        <Typography fontWeight={700}>{item.title}</Typography>
+                        <Typography variant="caption" color="text.secondary">{item.user} · {item.time}</Typography>
+                      </Paper>
+                    )) : (
+                      <Typography variant="body2" color="text.secondary">No recent activity.</Typography>
+                    )}
+                  </Stack>
+                </Paper>
+
+                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
+                  <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Equipment by Category</Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}> 
+                    {categoryStats.length > 0 ? categoryStats.map((item) => (
+                      <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, borderRadius: 2, bgcolor: '#f8fafc' }}>
+                        <Avatar sx={{ bgcolor: item.color, width: 10, height: 10 }} />
+                        <Box>
+                          <Typography variant="body2">{item.label}</Typography>
+                          <Typography variant="caption" color="text.secondary">{item.value}</Typography>
+                        </Box>
                       </Box>
+                    )) : (
+                      <Typography variant="body2" color="text.secondary" sx={{ gridColumn: 'span 2' }}>No categories available.</Typography>
+                    )}
+                  </Box>
+                </Paper>
+
+                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                    <Typography variant="h6" fontWeight={800}>Low Stock / Maintenance Alerts</Typography>
+                    <Button size="small" sx={{ textTransform: 'none' }}>View Details</Button>
+                  </Stack>
+                  <Stack spacing={1}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography>{equipmentRows.filter(e => (e.status || '').toLowerCase() === 'maintenance').length} items under maintenance</Typography>
+                      <Typography fontWeight={700}>View</Typography>
                     </Box>
-                  )) : (
-                    <Typography variant="body2" color="text.secondary" sx={{ gridColumn: 'span 2' }}>No categories available.</Typography>
-                  )}
-                </Box>
-              </Paper>
-
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight={800}>Low Stock / Maintenance Alerts</Typography>
-                  <Button size="small" sx={{ textTransform: 'none' }}>View Details</Button>
-                </Stack>
-                <Stack spacing={1}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography>{equipmentRows.filter(e => (e.status || '').toLowerCase() === 'maintenance').length} items under maintenance</Typography>
-                    <Typography fontWeight={700}>View</Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography>{equipmentRows.filter(e => e.quantity && e.quantity <= 2).length} items low in stock</Typography>
-                    <Typography fontWeight={700}>View</Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography>0 items require calibration</Typography>
-                    <Typography fontWeight={700}>View</Typography>
-                  </Box>
-                </Stack>
-              </Paper>
-            </Stack>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography>{equipmentRows.filter(e => e.quantity && e.quantity <= 2).length} items low in stock</Typography>
+                      <Typography fontWeight={700}>View</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography>0 items require calibration</Typography>
+                      <Typography fontWeight={700}>View</Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
+              </Stack>
+            </Grid>
           </Grid>
-        </Grid>
-      </Container>
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={800}>Add New Equipment</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField label="Equipment Name" fullWidth value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-            <TextField label="Category/Type" fullWidth value={form.type} onChange={e => setForm({...form, type: e.target.value})} helperText="e.g. Rescue Gear, Medical Equipment" />
-            <TextField label="Location" fullWidth value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
-            <TextField label="Status" fullWidth value={form.status} onChange={e => setForm({...form, status: e.target.value})} />
-            <TextField label="Quantity" type="number" fullWidth value={form.quantity} onChange={e => setForm({...form, quantity: Number(e.target.value)})} />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
-          <Button onClick={handleAddEquipment} variant="contained" color="success">Add Equipment</Button>
-        </DialogActions>
-      </Dialog>
+        )}
 
-      {/* QR Code Scanning Dialog */}
-      <Dialog open={scanOpen} onClose={() => setScanOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={800}>Scan Equipment QR Code</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <Box sx={{ textAlign: 'center', p: 3, border: '2px dashed #cbd5e1', borderRadius: 3, bgcolor: '#f8fafc' }}>
-              <QrCodeScannerRoundedIcon sx={{ fontSize: 64, color: '#94a3b8', mb: 2 }} />
-              <Typography variant="body2" color="text.secondary">
-                Point your camera at the QR code, or manually enter the Equipment ID below.
-              </Typography>
-            </Box>
-            <TextField 
-              label="Equipment QR ID" 
-              fullWidth 
-              value={scanForm.qr_code} 
-              onChange={e => setScanForm({...scanForm, qr_code: e.target.value})} 
-              placeholder="e.g. EQ-1001"
-            />
-            <TextField
-              select
-              label="Action to Perform"
-              fullWidth
-              SelectProps={{ native: true }}
-              value={scanForm.action}
-              onChange={e => setScanForm({...scanForm, action: e.target.value})}
-            >
-              <option value="scan">Log Location (Routine Scan)</option>
-              <option value="dispatch">Dispatch to Field</option>
-              <option value="confirm">Confirm Receipt</option>
-              <option value="maintenance">Send to Maintenance</option>
-            </TextField>
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setScanOpen(false)} color="inherit">Cancel</Button>
-          <Button onClick={handleScanSubmit} variant="contained" color="success">Submit Scan</Button>
-        </DialogActions>
-      </Dialog>
+        {activeView === 'add' && (
+          <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)', maxWidth: 600, mx: 'auto' }}>
+            <Typography variant="h5" fontWeight={800} sx={{ mb: 3 }}>Equipment Details</Typography>
+            <Stack spacing={3}>
+          <Autocomplete
+            freeSolo
+            options={predefinedEquipmentNames}
+            value={form.name}
+            onInputChange={(event, newValue) => {
+              const updatedForm = { ...form, name: newValue || '' };
+              // Auto-select the category if the equipment matches a predefined one
+              if (equipmentCategoryMap[newValue]) {
+                updatedForm.type = equipmentCategoryMap[newValue];
+              }
+              setForm(updatedForm);
+            }}
+            renderInput={(params) => <TextField {...params} label="Equipment Name" fullWidth />}
+          />
+              <Autocomplete
+                freeSolo
+                options={predefinedCategories}
+                value={form.type}
+                onInputChange={(event, newValue) => setForm({...form, type: newValue || ''})}
+                renderInput={(params) => <TextField {...params} label="Category/Type" fullWidth helperText="e.g. Rescue Gear, Medical Equipment" />}
+              />
+              <TextField label="Location" fullWidth value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
+              <Autocomplete
+                freeSolo
+                options={predefinedStatuses}
+                value={form.status}
+                onInputChange={(event, newValue) => setForm({...form, status: newValue || ''})}
+                renderInput={(params) => <TextField {...params} label="Status" fullWidth />}
+              />
+              <TextField label="Quantity" type="number" fullWidth value={form.quantity} onChange={e => setForm({...form, quantity: Number(e.target.value)})} />
+              <Box sx={{ display: 'flex', gap: 2, pt: 2 }}>
+                <Button onClick={() => setActiveView('inventory')} color="inherit" variant="outlined" sx={{ flex: 1, py: 1.5, fontWeight: 700 }}>Cancel</Button>
+                <Button onClick={handleAddEquipment} variant="contained" color="success" sx={{ flex: 1, py: 1.5, fontWeight: 700 }}>Save Equipment</Button>
+              </Box>
+            </Stack>
+          </Paper>
+        )}
+
+        {activeView === 'scan' && (
+          <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)', maxWidth: 600, mx: 'auto' }}>
+            <Typography variant="h5" fontWeight={800} sx={{ mb: 1 }}>Equipment Scanner</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>Select an action and scan the QR code to update the equipment status.</Typography>
+            
+            <Stack spacing={4}>
+              <Box sx={{ textAlign: 'center', p: 4, border: '2px dashed #cbd5e1', borderRadius: 3, bgcolor: '#f8fafc' }}>
+                <QrCodeScannerRoundedIcon sx={{ fontSize: 80, color: '#94a3b8', mb: 2 }} />
+                <Typography variant="body1" fontWeight={700} color="text.secondary">
+                  Point your camera at the QR code, or manually enter the Equipment ID below.
+                </Typography>
+              </Box>
+              
+              <TextField 
+                label="Equipment QR ID" 
+                fullWidth 
+                value={scanForm.qr_code} 
+                onChange={e => setScanForm({...scanForm, qr_code: e.target.value})} 
+                placeholder="e.g. EQ-1001"
+              />
+              
+              <TextField
+                select
+                label="Action to Perform"
+                fullWidth
+                SelectProps={{ native: true }}
+                value={scanForm.action}
+                onChange={e => setScanForm({...scanForm, action: e.target.value})}
+              >
+                <option value="scan">Log Location (Routine Scan)</option>
+                <option value="dispatch">Dispatch to Field</option>
+                <option value="confirm">Confirm Receipt</option>
+                <option value="maintenance">Send to Maintenance</option>
+              </TextField>
+              
+              <Box sx={{ display: 'flex', gap: 2, pt: 2 }}>
+                <Button onClick={() => setActiveView('inventory')} color="inherit" variant="outlined" sx={{ flex: 1, py: 1.5, fontWeight: 700 }}>Cancel</Button>
+                <Button onClick={handleScanSubmit} variant="contained" color="success" sx={{ flex: 1, py: 1.5, fontWeight: 700 }}>Submit Scan</Button>
+              </Box>
+            </Stack>
+          </Paper>
+        )}
+      </Container>
     </Box>
   );
 }

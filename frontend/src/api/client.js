@@ -10,7 +10,7 @@ const api = axios.create({
 });
 
 // Reads the saved JWT so every request can authenticate automatically.
-function getStoredToken() {
+export function getStoredToken() {
   return localStorage.getItem('sdrf_token') || '';
 }
 
