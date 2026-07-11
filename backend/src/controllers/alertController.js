@@ -1,4 +1,5 @@
 const alertingService = require("../services/alertingService");
+const filterByOffice = require("../utils/officeFilter");
 
 function createAlert(req, res) {
   const output = alertingService.createAlertAndNotify({
@@ -7,7 +8,8 @@ function createAlert(req, res) {
     lng: Number(req.body.lng),
     radiusKm: Number(req.body.radiusKm || 10),
     severity: req.body.severity || "medium",
-    createdBy: req.user.id
+    createdBy: req.user.id,
+    officeTags: req.body.officeTags
   });
   return res.status(201).json(output);
 }
@@ -25,8 +27,9 @@ function respondAlert(req, res) {
   return res.json({ updated: result.changes });
 }
 
-function listPins(_req, res) {
-  return res.json(alertingService.listAlertsForMap());
+function listPins(req, res) {
+  const alerts = alertingService.listAlertsForMap();
+  return res.json(filterByOffice(alerts, req.user));
 }
 
 module.exports = {

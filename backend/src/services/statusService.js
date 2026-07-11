@@ -29,10 +29,11 @@ function listStatuses() {
 }
 
 function getFallbackContact(agencyId) {
+  // Returns the agency head's phone, or null if none is registered.
   const row = db
     .prepare("SELECT phone FROM users WHERE agency = ? AND role = 'agency_head' AND phone IS NOT NULL ORDER BY id ASC LIMIT 1")
     .get(agencyId);
-  return row?.phone || "+910000000000";
+  return row?.phone || null;
 }
 
 function startHeartbeatMonitor() {
@@ -41,10 +42,14 @@ function startHeartbeatMonitor() {
     const stale = heartbeatModel.listOfflineCandidates(10);
     stale.forEach((item) => {
       heartbeatModel.markOffline(item.id);
-      sendSms(
-        getFallbackContact(item.agency_id),
-        "Emergency Alert. SDRF app connection lost. Check satellite radio immediately."
-      );
+      const phone = getFallbackContact(item.agency_id);
+      // Only send SMS if a real phone number is registered. Never call a placeholder.
+      if (phone) {
+        sendSms(
+          phone,
+          "SDRF Emergency Alert: App connection lost. Check satellite radio immediately."
+        );
+      }
     });
   }, 5 * 60 * 1000);
 }

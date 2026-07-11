@@ -1,12 +1,12 @@
 const { db } = require("../db/database");
 
-function createAlert({ disasterType, lat, lng, radiusKm, severity, createdBy }) {
+function createAlert({ disasterType, lat, lng, radiusKm, severity, createdBy, officeTags }) {
   return db
     .prepare(
-      `INSERT INTO alerts (disaster_type, lat, lng, radius_km, severity, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO alerts (disaster_type, lat, lng, radius_km, severity, created_by, office_tags)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(disasterType, lat, lng, radiusKm, severity, createdBy);
+    .run(disasterType, lat, lng, radiusKm, severity, createdBy, JSON.stringify(officeTags || []));
 }
 
 function listAlertRecipients(alertId) {
@@ -40,7 +40,7 @@ function markRecipientResponded(alertId, volunteerId, userId) {
 function listAlertsForMap() {
   return db
     .prepare(
-      "SELECT id, disaster_type, lat, lng, radius_km, severity, escalated, created_at FROM alerts ORDER BY datetime(created_at) DESC"
+      "SELECT id, disaster_type, lat, lng, radius_km, severity, escalated, created_at, office_tags FROM alerts ORDER BY datetime(created_at) DESC"
     )
     .all();
 }

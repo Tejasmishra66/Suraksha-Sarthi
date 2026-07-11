@@ -36,14 +36,22 @@ function startWatchdogMonitor() {
   // Sends failover SMS when agency heartbeat is stale.
   setInterval(() => {
     const health = getAgencyHealth();
-    health
-      .filter((item) => item.status === "offline")
-      .forEach((item) => {
+    const offlineAgencies = health.filter((item) => item.status === "offline");
+    if (offlineAgencies.length === 0) return;
+
+    // Load admin and department users who have a registered phone number.
+    const notifyUsers = db
+      .prepare("SELECT phone, name FROM users WHERE role IN ('admin', 'department') AND phone IS NOT NULL AND phone != ''")
+      .all();
+
+    offlineAgencies.forEach((item) => {
+      notifyUsers.forEach((u) => {
         sendSms(
-          "+910000000000",
-          `Watchdog failover: ${item.agency} appears offline. Trigger IVR/SMS fallback.`
+          u.phone,
+          `SDRF Watchdog: Agency '${item.agency}' appears offline. Trigger IVR/SMS fallback immediately.`
         );
       });
+    });
   }, 5 * 60 * 1000);
 }
 

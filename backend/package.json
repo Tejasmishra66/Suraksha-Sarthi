@@ -22,6 +22,7 @@
     "node-cron": "^3.0.3",
     "pg": "^8.13.1",
     "sdrf-helping-hands-root": "file:..",
+    "web-push": "^3.6.7",
     "winston": "^3.17.0"
   },
   "devDependencies": {

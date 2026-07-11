@@ -21,15 +21,30 @@ const agencyMemberRoutes = require("./routes/agencyMemberRoutes");
 const intelRoutes = require("./routes/intelRoutes");
 const statusRoutes = require("./routes/statusRoutes");
 const equipmentRoutes = require("./routes/equipment");
+const muteRoutes = require("./routes/muteRoutes");
+const auditRoutes = require("./routes/auditRoutes");
+const pushRoutes = require("./routes/pushRoutes");
 
 const app = express();
 
+// Restrict CORS to localhost dev origins only.
+// In production, replace with an explicit allowlist of your deployed domain(s).
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://localhost:3000',
+];
+
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow browser-based local dev from the frontend Vite server.
-    if (!origin || origin.indexOf('localhost') !== -1) return callback(null, true);
-    return callback(null, true);
-  }
+    // Allow non-browser requests (e.g. curl, Postman, server-to-server).
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(o => origin.startsWith(o))) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS: origin '${origin}' is not allowed`), false);
+  },
+  credentials: true,
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(
@@ -48,19 +63,22 @@ app.get("/", (_req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/tasks", authMiddleware, taskRoutes);
-app.use("/alerts", authMiddleware, alertRoutes);
+app.use("/alerts", alertRoutes);
 app.use("/ping", authMiddleware, pingRoutes);
 app.use("/verify", authMiddleware, verifyRoutes);
 app.use("/volunteers", authMiddleware, volunteerRoutes);
 app.use("/resources", authMiddleware, resourceRoutes);
 app.use("/agencies", authMiddleware, agencyRoutes);
 app.use("/agencies", authMiddleware, agencyMemberRoutes);
-app.use("/bulletins", authMiddleware, bulletinRoutes);
+app.use("/bulletins", bulletinRoutes);
 app.use("/intel", authMiddleware, intelRoutes);
 app.use("/sync", authMiddleware, syncRoutes);
 app.use("/incidents", authMiddleware, incidentRoutes);
 app.use("/status", authMiddleware, statusRoutes);
 app.use("/equipment", authMiddleware, equipmentRoutes);
+app.use("/mutes", authMiddleware, muteRoutes);
+app.use("/audit", authMiddleware, auditRoutes);
+app.use("/push", pushRoutes);
 
 app.use(errorHandler);
 

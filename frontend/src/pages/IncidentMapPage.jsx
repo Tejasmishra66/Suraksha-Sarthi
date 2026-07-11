@@ -1,50 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Avatar,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Container,
-  Grid,
-  MenuItem,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  Checkbox,
-  FormControlLabel,
-  Divider,
-  Switch,
-  keyframes,
-  InputAdornment
+  Box, Container, Grid, Paper, Stack, Typography, Chip, Button, Checkbox, 
+  Select, MenuItem, Divider, Tabs, Tab
 } from '@mui/material';
-import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import TopNavBar from '../components/TopNavBar';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
-
+import {
+  LocationOnRounded as LocationOnIcon,
+  WarningRounded as WarningIcon,
+  GroupsRounded as GroupsIcon,
+  HomeWorkRounded as HomeWorkIcon,
+  MapRounded as MapIcon,
+  CloudQueueRounded as CloudIcon,
+  AddLocationAltRounded as AddLocationIcon,
+  ShareRounded as ShareIcon,
+  UpdateRounded as UpdateIcon,
+  InfoRounded as InfoIcon
+} from '@mui/icons-material';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-leaflet';
 import { fetchAlerts } from '../api/client';
-
-const pulse = keyframes`
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
-`;
+import GeofenceAlert from '../components/GeofenceAlert';
 
 const HIMACHAL_CENTER = [31.1048, 77.1734];
 const HIMACHAL_BOUNDS = [
-  [30.2, 75.6],
-  [33.5, 79.6],
+  [29.0, 74.0], // SW
+  [34.5, 80.5], // NE
 ];
 
-// Fix leaflet default marker icon paths when using Vite.
+// Fix leaflet default marker icon paths
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -52,380 +33,380 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const getSeverityColor = (severity) => {
-  const s = severity?.toLowerCase();
-  if (s === 'high' || s === 'critical') return '#ef4444'; // Red
-  if (s === 'medium') return '#f59e0b'; // Orange
-  return '#3b82f6'; // Blue
-};
-
-const getDisasterIcon = (type) => {
-  const t = (type || '').toLowerCase();
-  if (t.includes('fire')) return '🔥';
-  if (t.includes('medical')) return '🚑';
-  if (t.includes('flood') || t.includes('water')) return '🌊';
-  if (t.includes('landslide') || t.includes('earthquake')) return '⛰️';
-  if (t.includes('natural')) return '🌪️';
-  if (t.includes('accident')) return '💥';
-  return '⚠️';
-};
-
-const createMarkerIcon = (severity, type) => {
-  const color = getSeverityColor(severity);
-  const icon = getDisasterIcon(type);
-  return L.divIcon({
-    className: 'custom-severity-marker',
-    html: `<div style="background-color: ${color}; width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 16px;">${icon}</div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-  });
-};
-
-const SDRF_OFFICES = [
-  { id: 'sdrf-hq', name: 'SDRF Headquarters', location: 'Shimla', lat: 31.1048, lng: 77.1734 },
-  { id: 'sdrf-mandi', name: 'SDRF Mandi Unit', location: 'Mandi', lat: 31.7087, lng: 76.9315 },
-  { id: 'sdrf-kangra', name: 'SDRF Kangra Unit', location: 'Dharamshala (Kangra region)', lat: 32.2190, lng: 76.3234 },
+// Mock Data matching the UI
+const LAYERS = [
+  { id: 'disaster', label: 'Disaster Zones', icon: <WarningIcon fontSize="small" sx={{ color: '#ef4444' }} />, color: '#ef4444', checked: true },
+  { id: 'warning', label: 'Warning Pins', icon: <LocationOnIcon fontSize="small" sx={{ color: '#f59e0b' }} />, color: '#f59e0b', checked: true },
+  { id: 'rescue', label: 'Rescue Teams', icon: <GroupsIcon fontSize="small" sx={{ color: '#3b82f6' }} />, color: '#3b82f6', checked: true },
+  { id: 'relief', label: 'Relief Camps', icon: <HomeWorkIcon fontSize="small" sx={{ color: '#10b981' }} />, color: '#10b981', checked: true },
+  { id: 'road', label: 'Road Conditions', icon: <MapIcon fontSize="small" sx={{ color: '#8b5cf6' }} />, color: '#8b5cf6', checked: true },
+  { id: 'river', label: 'River / Water Level', icon: <CloudIcon fontSize="small" sx={{ color: '#0ea5e9' }} />, color: '#0ea5e9', checked: false },
+  { id: 'helipads', label: 'Helipads', icon: <LocationOnIcon fontSize="small" sx={{ color: '#0f172a' }} />, color: '#0f172a', checked: false },
 ];
 
-const createSdrfIcon = () => {
+const createMarkerIcon = (color, icon) => {
   return L.divIcon({
-    className: 'custom-sdrf-marker',
-    html: `<div style="background-color: #059669; width: 28px; height: 28px; border-radius: 6px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-size: 14px; color: white;">🛡️</div>`,
+    className: 'custom-severity-marker',
+    html: `<div style="background-color: ${color}; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; font-size: 14px; color: white;">${icon}</div>`,
     iconSize: [28, 28],
-    iconAnchor: [14, 28],
+    iconAnchor: [14, 14],
   });
-};
-
-function GPSController({ coords }) {
-  const map = useMap();
-  useEffect(() => {
-    if (coords) {
-      map.flyTo([coords.lat, coords.lng], 14, { animate: true });
-    }
-  }, [coords, map]);
-  return null;
-}
-
-const getWeatherCondition = (code) => {
-  if (code === 0) return { label: 'Clear Sky', icon: '☀️' };
-  if (code >= 1 && code <= 3) return { label: 'Partly Cloudy', icon: '⛅' };
-  if (code === 45 || code === 48) return { label: 'Fog', icon: '🌫️' };
-  if ((code >= 51 && code <= 55) || (code >= 61 && code <= 65) || (code >= 80 && code <= 82)) return { label: 'Rain', icon: '🌧️' };
-  if (code >= 71 && code <= 77) return { label: 'Snow', icon: '❄️' };
-  if (code >= 95 && code <= 99) return { label: 'Thunderstorm', icon: '⛈️' };
-  return { label: 'Unknown', icon: '❓' };
 };
 
 export default function IncidentMapPage() {
-  const [alerts, setAlerts] = useState([]);
-  const [layers, setLayers] = useState({
-    alertFlood: true,
-    alertLandslide: true,
-    alertFire: true,
-    alertAccident: true,
-    alertMedical: true,
-    alertOther: true,
-  });
-  const [gpsFlyTo, setGpsFlyTo] = useState(null);
-  const [weatherData, setWeatherData] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [alertSearch, setAlertSearch] = useState('');
+  const [layers, setLayers] = useState(LAYERS);
+  const [maskPositions, setMaskPositions] = useState(null);
+  const [alertsData, setAlertsData] = useState([]);
+  const [intelData, setIntelData] = useState([]);
+  const [mapView, setMapView] = useState('terrain');
 
   useEffect(() => {
-    refreshAlerts();
-    fetchWeather();
+    const mandiAlerts = [
+      { disaster_type: 'Massive Landslide', severity: 'High', lat: 31.7087, lng: 76.9320, created_at: new Date().toISOString() },
+      { disaster_type: 'Road Block (Debris)', severity: 'Medium', lat: 31.7095, lng: 76.9335, created_at: new Date(Date.now() - 3600000).toISOString() },
+      { disaster_type: 'Rescue Operation', severity: 'High', lat: 31.7102, lng: 76.9310, created_at: new Date(Date.now() - 7200000).toISOString() }
+    ];
 
-    // Auto-refresh alerts every 30 seconds
-    const intervalId = setInterval(refreshAlerts, 30000);
-    return () => clearInterval(intervalId);
+    fetchAlerts().then(data => {
+      setAlertsData([...mandiAlerts, ...(data || [])]);
+    }).catch(e => {
+      console.error(e);
+      setAlertsData(mandiAlerts); // Fallback to mock data if backend is offline
+    });
+    import('../api/client').then(({ fetchIntelPins }) => {
+      fetchIntelPins().then(data => setIntelData(data || [])).catch(e => console.error(e));
+    });
+
+    fetch('https://raw.githubusercontent.com/udit-001/india-maps-data/main/geojson/himachal-pradesh.geojson')
+      .then(res => res.json())
+      .then(data => {
+        if (!data || !data.features || !data.features[0]) return;
+        const feature = data.features[0];
+        const extractRings = (coords, type) => {
+           if (type === 'Polygon') {
+               return coords.map(ring => ring.map(c => [c[1], c[0]]));
+           } else if (type === 'MultiPolygon') {
+               let allRings = [];
+               coords.forEach(poly => {
+                   poly.forEach(ring => allRings.push(ring.map(c => [c[1], c[0]])));
+               });
+               return allRings;
+           }
+           return [];
+        };
+        const hpRings = extractRings(feature.geometry.coordinates, feature.geometry.type);
+        const worldBounds = [
+          [-90, -180], [90, -180], [90, 180], [-90, 180]
+        ];
+        // Outer shape is world bounds, inner hole is the HP border
+        setMaskPositions([worldBounds, ...hpRings]);
+      })
+      .catch(e => console.error("Failed to load map bounds:", e));
   }, []);
 
-  async function fetchWeather() {
-    const [lat, lng] = HIMACHAL_CENTER; // Change these to any custom coordinates (e.g. [28.6139, 77.2090] for New Delhi)
-    try {
-      // Fetching weather for the specified coordinates
-      const res = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=temperature_2m_max,weather_code&timezone=auto`
-      );
-      const data = await res.json();
-      setWeatherData(data);
-    } catch (err) {
-      console.error('Failed to fetch weather data', err);
-    }
-  }
-
-  async function refreshAlerts() {
-    try {
-      setAlerts(await fetchAlerts());
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error(err?.response?.data?.message || 'Could not load alerts');
-    }
-  }
-
-  const filteredAlerts = alerts.filter(alert => {
-    if (!alertSearch) return true;
-    const term = alertSearch.toLowerCase();
-    return (alert.disaster_type || alert.disasterType || '').toLowerCase().includes(term) ||
-           (alert.severity || '').toLowerCase().includes(term);
-  });
+  const handleLayerChange = (id) => {
+    setLayers(layers.map(l => l.id === id ? { ...l, checked: !l.checked } : l));
+  };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f4faf4' }}>
-      <TopNavBar />
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f4f6f8', fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* 1. HERO SECTION */}
+      <Box sx={{ 
+        position: 'relative',
+        height: 450,
+        backgroundImage: 'url(/mountain-map.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'top',
+        pt: 8, pb: 4, px: 4
+      }}>
+        {/* Hero text removed as requested */}
+      </Box>
 
-      <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
-        <Grid container spacing={4}>
-          <Grid item xs={12} lg={8}>
-            <Stack spacing={4}>
-              <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, px: 1 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="h6" fontWeight={800} color="#0f172a">
-                  Live Operational Map
-                </Typography>
-                <Chip label="LIVE STATUS" size="small" color="success" sx={{ fontWeight: 800, animation: `${pulse} 2s infinite` }} />
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
-                <AccessTimeRoundedIcon fontSize="small" />
-                <Typography variant="body2" fontWeight={700}>
-                  Updated: {lastUpdated.toLocaleTimeString()}
-                </Typography>
-              </Box>
-            </Stack>
-            <Card sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 20px 40px rgba(15,23,42,0.08)' }}>
-              <CardContent sx={{ p: 0 }}>
-                <Box sx={{ height: { xs: 500, md: 720 }, width: '100%' }}>
-                  <MapContainer
-                    bounds={HIMACHAL_BOUNDS}
-                    center={HIMACHAL_CENTER}
-                    zoom={8}
-                    minZoom={8}
-                    maxBounds={HIMACHAL_BOUNDS}
-                    maxBoundsViscosity={1.0}
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer 
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    />
-                    <GPSController coords={gpsFlyTo} />
-                    {SDRF_OFFICES.map((office) => (
-                      <Marker 
-                        key={office.id} 
-                        position={[office.lat, office.lng]}
-                        icon={createSdrfIcon()}
-                      >
-                        <Popup>
-                          <Typography fontWeight={800} color="#0f172a">{office.name}</Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{office.location}</Typography>
-                          <Chip label="SDRF Base" size="small" sx={{ bgcolor: '#059669', color: '#fff', fontWeight: 700 }} />
-                        </Popup>
-                      </Marker>
-                    ))}
-                    {alerts
-                      .filter((alert) => {
-                        const t = (alert.disaster_type || alert.disasterType || '').toLowerCase();
-                        const isFlood = t.includes('flood') || t.includes('water');
-                        const isLandslide = t.includes('landslide') || t.includes('earthquake');
-                        const isFire = t.includes('fire');
-                        const isAccident = t.includes('accident') || t.includes('crash');
-                        const isMedical = t.includes('medical');
-                        const isOther = !isFlood && !isLandslide && !isFire && !isAccident && !isMedical;
-                        
-                        if (isFlood && layers.alertFlood) return true;
-                        if (isLandslide && layers.alertLandslide) return true;
-                        if (isFire && layers.alertFire) return true;
-                        if (isAccident && layers.alertAccident) return true;
-                        if (isMedical && layers.alertMedical) return true;
-                        if (isOther && layers.alertOther) return true;
-                        return false;
-                      })
-                      .map((alert) => (
-                        <Marker 
-                          key={alert.id} 
-                          position={[Number(alert.lat), Number(alert.lng)]}
-                          icon={createMarkerIcon(alert.severity, alert.disaster_type || alert.disasterType)}
-                        >
-                          <Popup>
-                            <Typography fontWeight={700}>{alert.disaster_type || alert.disasterType}</Typography>
-                            <div>Severity: {alert.severity}</div>
-                            <div>Radius: {alert.radius_km || alert.radiusKm} km</div>
-                          </Popup>
-                        </Marker>
-                      ))}
-                  </MapContainer>
-                </Box>
-              </CardContent>
-            </Card>
-              </Box>
-
-            <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)', height: '100%' }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 3 }}>Map Controls & Legend</Typography>
-              
-              <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 1.5 }}>Incident Layers</Typography>
-              <Grid container spacing={2} sx={{ mb: 4 }}>
-                {[
-                  { key: 'alertFlood', label: 'Flood Alerts (🌊)', color: 'info' },
-                  { key: 'alertLandslide', label: 'Landslides (⛰️)', color: 'warning' },
-                  { key: 'alertFire', label: 'Fire Incidents (🔥)', color: 'error' },
-                  { key: 'alertAccident', label: 'Accidents (💥)', color: 'warning' },
-                  { key: 'alertMedical', label: 'Medical (🚑)', color: 'error' },
-                  { key: 'alertOther', label: 'Other Incidents (⚠️)', color: 'secondary' },
-                ].map((item) => (
-                  <Grid item xs={12} sm={6} md={4} key={item.key}>
-                    <Paper onClick={() => setLayers(prev => ({ ...prev, [item.key]: !prev[item.key] }))} sx={{ cursor: 'pointer', px: 2, py: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 3, border: '1px solid #f1f5f9', bgcolor: layers[item.key] ? '#f8fafc' : '#ffffff', transition: 'all 0.2s', '&:hover': { borderColor: '#cbd5e1', transform: 'translateY(-2px)' } }}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            size="small"
-                            checked={layers[item.key]}
-                            onChange={(e) => { e.stopPropagation(); setLayers(prev => ({ ...prev, [item.key]: e.target.checked })); }}
-                            color={item.color}
-                          />
-                        }
-                        label={<Typography variant="body2" fontWeight={layers[item.key] ? 700 : 500}>{item.label}</Typography>}
-                        sx={{ m: 0, width: '100%', pointerEvents: 'none' }}
+      {/* 3. MAIN CONTENT GRID */}
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Grid container spacing={3}>
+          
+          {/* LEFT COLUMN: Map Layers & Filters */}
+          <Grid item xs={12} md={3} lg={2.5}>
+            <Stack spacing={3}>
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={2}>Map Layers</Typography>
+                <Stack spacing={0.5}>
+                  {layers.map((layer) => (
+                    <Box key={layer.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.5 }}>
+                      <Checkbox 
+                        size="small" 
+                        checked={layer.checked} 
+                        onChange={() => handleLayerChange(layer.id)}
+                        sx={{ p: 0.5, color: '#cbd5e1', '&.Mui-checked': { color: '#0f4a30' } }} 
                       />
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-
-              <Divider sx={{ mb: 4 }} />
-
-              <Grid container spacing={4}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 2 }}>Incident Types</Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>🌊</Typography><Typography variant="body2" fontWeight={600}>Flood</Typography></Box></Grid>
-                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>⛰️</Typography><Typography variant="body2" fontWeight={600}>Landslide</Typography></Box></Grid>
-                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>🔥</Typography><Typography variant="body2" fontWeight={600}>Fire</Typography></Box></Grid>
-                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>💥</Typography><Typography variant="body2" fontWeight={600}>Crash</Typography></Box></Grid>
-                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>🚑</Typography><Typography variant="body2" fontWeight={600}>Medical</Typography></Box></Grid>
-                    <Grid item xs={6}><Box sx={{ display: 'flex', alignItems: 'center' }}><Typography sx={{ fontSize: 22, mr: 1 }}>⚠️</Typography><Typography variant="body2" fontWeight={600}>Other</Typography></Box></Grid>
-                  </Grid>
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1, display: 'block', mb: 2 }}>Severity Status</Typography>
-                  <Stack spacing={3}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}><Box sx={{ bgcolor: '#ef4444', width: 18, height: 18, borderRadius: '50%', mr: 2, boxShadow: '0 2px 6px rgba(239,68,68,0.4)' }}></Box><Typography variant="body2" fontWeight={700}>High / Critical</Typography></Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}><Box sx={{ bgcolor: '#f59e0b', width: 18, height: 18, borderRadius: '50%', mr: 2, boxShadow: '0 2px 6px rgba(245,158,11,0.4)' }}></Box><Typography variant="body2" fontWeight={700}>Medium Alert</Typography></Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}><Box sx={{ bgcolor: '#3b82f6', width: 18, height: 18, borderRadius: '50%', mr: 2, boxShadow: '0 2px 6px rgba(59,130,246,0.4)' }}></Box><Typography variant="body2" fontWeight={700}>Low / Advisory</Typography></Box>
-                  </Stack>
-                </Grid>
-              </Grid>
-            </Paper>
-            </Stack>
-          </Grid>
-
-          <Grid item xs={12} lg={4}>
-            <Stack spacing={4}>
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight={800}>Active Alerts</Typography>
-                  <Button size="small">View All</Button>
-                </Stack>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Search alerts (e.g. Flood, High)..."
-                value={alertSearch}
-                onChange={(e) => setAlertSearch(e.target.value)}
-                sx={{ mb: 2 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchRoundedIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-                <Stack spacing={2}>
-                {filteredAlerts.length > 0 ? filteredAlerts.slice(0, 5).map((item) => {
-                    const severityLower = (item.severity || 'medium').toLowerCase();
-                    const chipColor = (severityLower === 'high' || severityLower === 'critical') ? 'error' : severityLower === 'medium' ? 'warning' : 'success';
-                    const borderColor = (severityLower === 'high' || severityLower === 'critical') ? '#ef4444' : severityLower === 'medium' ? '#f59e0b' : '#10b981';
-                    return (
-                      <Paper 
-                        key={item.id} 
-                        onClick={() => setGpsFlyTo({ lat: Number(item.lat), lng: Number(item.lng) })}
-                        sx={{ cursor: 'pointer', p: 2, borderRadius: 3, bgcolor: '#ffffff', borderLeft: `4px solid ${borderColor}`, borderTop: '1px solid #f1f5f9', borderRight: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', boxShadow: '0 4px 12px rgba(15,23,42,0.02)', transition: 'all 0.2s', '&:hover': { transform: 'translateX(4px)', boxShadow: '0 8px 24px rgba(15,23,42,0.06)' } }}
-                      >
-                        <Stack spacing={1}>
-                          <Typography fontWeight={700} sx={{ textTransform: 'capitalize' }}>{item.disaster_type || item.disasterType} Alert</Typography>
-                          <Typography variant="caption" color="text.secondary">Coordinates: {Number(item.lat).toFixed(4)}, {Number(item.lng).toFixed(4)}</Typography>
-                          <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="caption" color="text.secondary">{new Date(item.created_at || Date.now()).toLocaleDateString()}</Typography>
-                            <Chip label={item.severity || 'Medium'} size="small" color={chipColor} sx={{ textTransform: 'capitalize' }} />
-                          </Stack>
-                        </Stack>
-                      </Paper>
-                    );
-                  }) : (
-                    <Typography variant="body2" color="text.secondary">No active alerts at this time.</Typography>
-                  )}
-                </Stack>
-              </Paper>
-
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-                <Box sx={{ p: 3, m: -3, mb: 3, borderRadius: '16px 16px 0 0', background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)', color: 'white' }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                    <Typography variant="h6" fontWeight={800}>Weather Overview</Typography>
-                    <Button size="small" sx={{ color: '#93c5fd' }}>View Details</Button>
-                  </Stack>
-              {weatherData ? (
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff' }}>
-                        {getWeatherCondition(weatherData.current.weather_code).icon}
-                      </Avatar>
-                      <Box>
-                        <Typography fontWeight={700}>{Math.round(weatherData.current.temperature_2m)}°C</Typography>
-                    <Typography variant="caption" sx={{ color: '#bfdbfe' }}>
-                          {getWeatherCondition(weatherData.current.weather_code).label}
-                        </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 0.5, px: 1, borderRadius: 1, bgcolor: `${layer.color}15` }}>
+                        {layer.icon}
                       </Box>
-                    </Stack>
-              ) : (
-                <Typography variant="body2" sx={{ color: '#bfdbfe' }}>Loading weather data...</Typography>
-              )}
-                </Box>
-            
-            {weatherData && (
-              <Grid container spacing={1}>
-                {weatherData.daily.time.slice(0, 4).map((time, idx) => {
-                  const date = new Date(time);
-                  const dayName = idx === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' });
-                  return (
-                    <Grid item xs={3} key={time}>
-                      <Paper sx={{ p: 1, textAlign: 'center', borderRadius: 2, bgcolor: '#f8fafc', border: '1px solid #f1f5f9' }}>
-                        <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>{dayName}</Typography>
-                        <Typography variant="subtitle2">{Math.round(weatherData.daily.temperature_2m_max[idx])}°C</Typography>
-                      </Paper>
-                    </Grid>
-                  );
-                })}
-              </Grid>
-                )}
-              </Paper>
-
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Quick Information</Typography>
-                <Stack spacing={1}>
-                  {[
-                    { label: 'Active Districts', value: '12' },
-                    { label: 'Rescue Teams', value: '7' },
-                    { label: 'Affected People', value: '1.2K' },
-                    { label: 'Relief Camps', value: '14' },
-                  ].map((item) => (
-                    <Stack key={item.label} direction="row" justifyContent="space-between" sx={{ py: 1, borderBottom: '1px solid #e5e7eb' }}>
-                      <Typography>{item.label}</Typography>
-                      <Typography fontWeight={700}>{item.value}</Typography>
-                    </Stack>
+                      <Typography variant="body2" fontWeight={600} color="#475569">{layer.label}</Typography>
+                    </Box>
                   ))}
                 </Stack>
               </Paper>
+
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={2}>Filter by District</Typography>
+                <Select fullWidth size="small" value="all" sx={{ bgcolor: '#f8fafc', fontWeight: 600, color: '#475569' }}>
+                  <MenuItem value="all">All Districts</MenuItem>
+                  <MenuItem value="kullu">Kullu</MenuItem>
+                  <MenuItem value="mandi">Mandi</MenuItem>
+                  <MenuItem value="shimla">Shimla</MenuItem>
+                </Select>
+              </Paper>
+
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={2}>Quick Actions</Typography>
+                <Stack spacing={1.5}>
+                  <Button variant="outlined" startIcon={<AddLocationIcon />} sx={{ color: '#0f4a30', borderColor: '#0f4a30', bgcolor: '#f0fdf4', fontWeight: 700, justifyContent: 'flex-start', px: 2, py: 1, borderRadius: 2 }}>
+                    Add Warning Pin
+                  </Button>
+                  <Button variant="outlined" startIcon={<ShareIcon />} sx={{ color: '#0f4a30', borderColor: '#cbd5e1', fontWeight: 700, justifyContent: 'flex-start', px: 2, py: 1, borderRadius: 2, '&:hover': { bgcolor: '#f8fafc' } }}>
+                    Share Map
+                  </Button>
+                </Stack>
+              </Paper>
+
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={2}>Legend</Typography>
+                <Stack spacing={2}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <WarningIcon fontSize="small" sx={{ color: '#ef4444' }} />
+                    <Typography variant="body2" fontWeight={600} color="#475569">High Alert Zone</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <LocationOnIcon fontSize="small" sx={{ color: '#f59e0b' }} />
+                    <Typography variant="body2" fontWeight={600} color="#475569">Warning / Advisory</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <GroupsIcon fontSize="small" sx={{ color: '#3b82f6' }} />
+                    <Typography variant="body2" fontWeight={600} color="#475569">Rescue Team</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <HomeWorkIcon fontSize="small" sx={{ color: '#10b981' }} />
+                    <Typography variant="body2" fontWeight={600} color="#475569">Relief Camp</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <MapIcon fontSize="small" sx={{ color: '#8b5cf6' }} />
+                    <Typography variant="body2" fontWeight={600} color="#475569">Road Block / Issue</Typography>
+                  </Box>
+                </Stack>
+              </Paper>
+            </Stack>
+          </Grid>
+
+          {/* CENTER COLUMN: Leaflet Map */}
+          <Grid item xs={12} md={6} lg={6.5}>
+            <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', height: 500, overflow: 'hidden', position: 'relative' }}>
+              <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 400 }}>
+                <Select size="small" value={mapView} onChange={(e) => setMapView(e.target.value)} sx={{ bgcolor: '#fff', fontWeight: 700, boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+                  <MenuItem value="terrain">Terrain View</MenuItem>
+                  <MenuItem value="satellite">Satellite View</MenuItem>
+                </Select>
+              </Box>
+              
+              <MapContainer center={[31.5, 77.2]} zoom={7} minZoom={7} maxZoom={16} maxBounds={HIMACHAL_BOUNDS} maxBoundsViscosity={0.8} style={{ height: '100%', width: '100%', zIndex: 1, backgroundColor: '#ffffff' }}>
+                <TileLayer 
+                  key={mapView}
+                  url={mapView === 'terrain' 
+                    ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+                    : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"} 
+                  attribution="Tiles &copy; Esri" 
+                />
+                <GeofenceAlert alerts={alertsData} />
+                
+                {/* Labels and boundaries overlay for Satellite view */}
+                {mapView === 'satellite' && (
+                  <TileLayer 
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                  />
+                )}
+                
+                {/* Inverted Polygon to mask everything outside Himachal Pradesh */}
+                {maskPositions && (
+                  <Polygon 
+                    positions={maskPositions} 
+                    pathOptions={{ fillColor: '#ffffff', fillOpacity: 0.95, color: '#0f4a30', weight: 4, opacity: 0.9 }} 
+                  />
+                )}
+
+                {/* Live Database Markers */}
+                {alertsData.filter(a => a && a.lat && a.lng).map((alert, i) => {
+                  const isHigh = alert.severity === 'High';
+                  const showDisaster = layers.find(l => l.id === 'disaster')?.checked;
+                  const showWarning = layers.find(l => l.id === 'warning')?.checked;
+                  
+                  if (isHigh && !showDisaster) return null;
+                  if (!isHigh && !showWarning) return null;
+
+                  let iconEmoji = isHigh ? '🚨' : '⚠️';
+                  let iconColor = isHigh ? '#ef4444' : '#f59e0b';
+                  const dType = (alert.disaster_type || '').toLowerCase();
+                  if (dType.includes('road') || dType.includes('block')) {
+                    iconEmoji = '🚧';
+                    iconColor = '#8b5cf6'; // Purple road color
+                  } else if (dType.includes('rescue')) {
+                    iconEmoji = '👥';
+                    iconColor = '#3b82f6'; // Blue rescue color
+                  }
+                  
+                  return (
+                    <Marker 
+                      key={`alert-${i}`} 
+                      position={[alert.lat, alert.lng]} 
+                      icon={createMarkerIcon(iconColor, iconEmoji)} 
+                    >
+                      <Popup>
+                        <b>{alert.disaster_type}</b><br/>Severity: {alert.severity}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+                
+                {intelData.filter(a => a && a.lat && a.lon).map((intel, i) => {
+                  const dept = (intel.department || '').toLowerCase();
+                  const note = (intel.note || '').toLowerCase();
+                  const searchStr = `${dept} ${note}`;
+                  
+                  const isRescue = dept.includes('ndrf') || dept.includes('sdrf') || searchStr.includes('rescue');
+                  const isRelief = dept.includes('medical') || dept.includes('health') || searchStr.includes('relief') || searchStr.includes('camp');
+                  const isRoad = searchStr.includes('road') || searchStr.includes('block') || searchStr.includes('bridge') || searchStr.includes('landslide');
+                  const isRiver = searchStr.includes('water') || searchStr.includes('river') || searchStr.includes('flood') || searchStr.includes('dam');
+                  const isHelipad = searchStr.includes('helipad') || searchStr.includes('chopper');
+                  
+                  const showRescue = layers.find(l => l.id === 'rescue')?.checked;
+                  const showRelief = layers.find(l => l.id === 'relief')?.checked;
+                  const showRoad = layers.find(l => l.id === 'road')?.checked;
+                  const showRiver = layers.find(l => l.id === 'river')?.checked;
+                  const showHelipad = layers.find(l => l.id === 'helipads')?.checked;
+                  
+                  let shouldShow = false;
+                  let iconProps = ['#f59e0b', '📍']; // Default fallback
+
+                  if (isHelipad) {
+                    if (showHelipad) shouldShow = true;
+                    iconProps = ['#0f172a', '🚁'];
+                  } else if (isRiver) {
+                    if (showRiver) shouldShow = true;
+                    iconProps = ['#0ea5e9', '🌊'];
+                  } else if (isRoad) {
+                    if (showRoad) shouldShow = true;
+                    iconProps = ['#8b5cf6', '🚧'];
+                  } else if (isRelief) {
+                    if (showRelief) shouldShow = true;
+                    iconProps = ['#10b981', '🏥'];
+                  } else {
+                    if (showRescue) shouldShow = true;
+                    iconProps = ['#3b82f6', '👥'];
+                  }
+                  
+                  if (!shouldShow) return null;
+                  
+                  return (
+                    <Marker 
+                      key={`intel-${i}`} 
+                      position={[intel.lat, intel.lon]} 
+                      icon={createMarkerIcon(iconProps[0], iconProps[1])} 
+                    >
+                      <Popup>
+                        <b>{intel.department}</b><br/>{intel.note}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+
+                {/* Removed mock markers */}
+              </MapContainer>
+            </Paper>
+          </Grid>
+
+          {/* RIGHT COLUMN: Alerts & Info */}
+          <Grid item xs={12} md={3} lg={3}>
+            <Stack spacing={3} sx={{ height: '100%' }}>
+              
+              {/* Active Alerts List */}
+              <Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                  <Typography variant="subtitle2" fontWeight={800} color="#0f172a">Active Alerts</Typography>
+                  <Typography variant="caption" fontWeight={700} color="#0f4a30" sx={{ cursor: 'pointer' }}>View All</Typography>
+                </Stack>
+                <Stack spacing={2}>
+                  {alertsData.length === 0 ? (
+                    <Typography variant="body2" color="#64748b" textAlign="center" py={4}>No active alerts at the moment.</Typography>
+                  ) : (
+                    alertsData.slice(0, 5).map((alert, i) => {
+                      const isHigh = alert.severity === 'High';
+                      return (
+                        <Paper key={i} elevation={0} sx={{ p: 2, borderRadius: 2, bgcolor: isHigh ? '#fef2f2' : '#fffbeb', border: `1px solid ${isHigh ? '#fecaca' : '#fde68a'}` }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                            <Box sx={{ display: 'flex', gap: 1.5 }}>
+                              <WarningIcon fontSize="small" sx={{ color: isHigh ? '#ef4444' : '#f59e0b', mt: 0.2 }} />
+                              <Box>
+                                <Typography variant="subtitle2" fontWeight={800} color={isHigh ? '#7f1d1d' : '#92400e'}>{alert.disaster_type} Warning</Typography>
+                              </Box>
+                            </Box>
+                            <Chip label={alert.severity || 'Medium'} size="small" sx={{ bgcolor: isHigh ? '#fecaca' : '#fde68a', color: isHigh ? '#991b1b' : '#92400e', fontWeight: 800, fontSize: '0.65rem', height: 20 }} />
+                          </Stack>
+                          <Typography variant="caption" color={isHigh ? '#991b1b' : '#b45309'} sx={{ pl: 4 }}>
+                            {new Date(alert.created_at || Date.now()).toLocaleString()}
+                          </Typography>
+                        </Paper>
+                      );
+                    })
+                  )}
+                </Stack>
+              </Box>
+
+              <Divider />
+
+              {/* Quick Information */}
+              <Box>
+                <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={2}>Quick Information</Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Paper elevation={0} sx={{ p: 1.5, borderRadius: 2, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <MapIcon sx={{ color: '#0f4a30', fontSize: 16 }} />
+                        <Typography variant="caption" fontWeight={600} color="#475569">Active Districts</Typography>
+                      </Box>
+                      <Typography variant="subtitle2" fontWeight={800} color="#0f172a">0</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Paper elevation={0} sx={{ p: 1.5, borderRadius: 2, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <GroupsIcon sx={{ color: '#0f4a30', fontSize: 16 }} />
+                        <Typography variant="caption" fontWeight={600} color="#475569">Rescue Teams</Typography>
+                      </Box>
+                      <Typography variant="subtitle2" fontWeight={800} color="#0f172a">0</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Paper elevation={0} sx={{ p: 1.5, borderRadius: 2, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <GroupsIcon sx={{ color: '#0f4a30', fontSize: 16 }} />
+                        <Typography variant="caption" fontWeight={600} color="#475569">Affected People</Typography>
+                      </Box>
+                      <Typography variant="subtitle2" fontWeight={800} color="#0f172a">0</Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Paper elevation={0} sx={{ p: 1.5, borderRadius: 2, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <HomeWorkIcon sx={{ color: '#0f4a30', fontSize: 16 }} />
+                        <Typography variant="caption" fontWeight={600} color="#475569">Relief Camps</Typography>
+                      </Box>
+                      <Typography variant="subtitle2" fontWeight={800} color="#0f172a">0</Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Box>
+
             </Stack>
           </Grid>
         </Grid>

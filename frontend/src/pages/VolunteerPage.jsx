@@ -1,89 +1,50 @@
-﻿﻿﻿﻿﻿﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
-  Avatar,
-  Box,
-  Button,
-  Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Grid,
-  InputAdornment,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-  Badge,
-  keyframes,
-  Chip,
-  Autocomplete
+  Avatar, Box, Button, Container, Grid, InputAdornment, Paper, Stack,
+  TextField, Typography, Chip, Dialog, DialogTitle, DialogContent,
+  DialogActions, Autocomplete, Alert, Select, MenuItem, Divider, IconButton
 } from '@mui/material';
-import TopNavBar from '../components/TopNavBar';
-import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded';
-import MapRoundedIcon from '@mui/icons-material/MapRounded';
+
+// API
+import { fetchVolunteers, createVolunteer } from '../api/client';
+
+// Icons
+import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
-import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import ArrowRightAltRoundedIcon from '@mui/icons-material/ArrowRightAltRounded';
+import GroupAddOutlinedIcon from '@mui/icons-material/GroupAddOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
-import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded';
-import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded';
-import SchoolRoundedIcon from '@mui/icons-material/SchoolRounded';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import RoomOutlinedIcon from '@mui/icons-material/RoomOutlined';
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined';
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
+import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
+import OndemandVideoOutlinedIcon from '@mui/icons-material/OndemandVideoOutlined';
+import HealthAndSafetyOutlinedIcon from '@mui/icons-material/HealthAndSafetyOutlined';
 
-// New imports for specific skill icons
-import DirectionsRunRoundedIcon from '@mui/icons-material/DirectionsRunRounded'; // For Mountain Rescue, Search & Rescue
-import MedicalServicesRoundedIcon from '@mui/icons-material/MedicalServicesRounded'; // For First Aid, Medical Support
-import FireExtinguisherRoundedIcon from '@mui/icons-material/FireExtinguisherRounded'; // For Fire Safety
-import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'; // For Communication
-import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'; // For Logistics
-import FlightRoundedIcon from '@mui/icons-material/FlightRounded'; // For Drone Operator
-import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
-import { fetchVolunteers, createVolunteer, broadcastVolunteers } from '../api/client';
-
-const pulse = keyframes`
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
-`;
+// Skills Icons
+import TerrainOutlinedIcon from '@mui/icons-material/TerrainOutlined';
+import LocalHospitalOutlinedIcon from '@mui/icons-material/LocalHospitalOutlined';
+import MedicalServicesOutlinedIcon from '@mui/icons-material/MedicalServicesOutlined';
+import PersonSearchOutlinedIcon from '@mui/icons-material/PersonSearchOutlined';
+import LocalFireDepartmentOutlinedIcon from '@mui/icons-material/LocalFireDepartmentOutlined';
+import CellTowerOutlinedIcon from '@mui/icons-material/CellTowerOutlined';
+import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
+import FlightOutlinedIcon from '@mui/icons-material/FlightOutlined';
 
 export default function VolunteerPage() {
-  const skills = [
-    { name: 'Mountain Rescue', icon: <DirectionsRunRoundedIcon /> },
-    { name: 'First Aid', icon: <MedicalServicesRoundedIcon /> },
-    { name: 'Medical Support', icon: <MedicalServicesRoundedIcon /> },
-    { name: 'Search & Rescue', icon: <DirectionsRunRoundedIcon /> },
-    { name: 'Fire Safety', icon: <FireExtinguisherRoundedIcon /> },
-    { name: 'Communication', icon: <SupportAgentRoundedIcon /> },
-    { name: 'Logistics', icon: <LocalShippingRoundedIcon /> },
-    { name: 'Drone Operator', icon: <FlightRoundedIcon /> },
-  ];
-
-  const whyVolunteer = [
-    {
-      title: 'Make an Impact',
-      description: 'Use your skills to save lives and support communities during crisis response.',
-      icon: <CheckCircleRoundedIcon />,
-    },
-    {
-      title: 'Get Trained',
-      description: 'Access guided training, resources and rescue best practices.',
-      icon: <SchoolRoundedIcon />,
-    },
-    {
-      title: 'Be Recognized',
-      description: 'Earn recognition for your volunteer service and leadership.',
-      icon: <StarRoundedIcon />,
-    },
-  ];
-
   const [volunteers, setVolunteers] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', skills: 'First Aid' });
-  const [broadcastMsg, setBroadcastMsg] = useState('');
-  const [broadcastRadius, setBroadcastRadius] = useState('10');
   const [volunteerSearch, setVolunteerSearch] = useState('');
+  const [radius, setRadius] = useState('10 km Radius');
+  
+  // Registration Modal State
+  const [openRegister, setOpenRegister] = useState(false);
+  const [form, setForm] = useState({ name: '', phone: '', skills: 'First Aid' });
 
   useEffect(() => {
     loadVolunteers();
@@ -98,7 +59,22 @@ export default function VolunteerPage() {
     }
   }
 
+  const allSkills = [
+    { name: 'Mountain Rescue', icon: <TerrainOutlinedIcon fontSize="small" /> },
+    { name: 'First Aid', icon: <LocalHospitalOutlinedIcon fontSize="small" /> },
+    { name: 'Medical Support', icon: <MedicalServicesOutlinedIcon fontSize="small" /> },
+    { name: 'Search & Rescue', icon: <PersonSearchOutlinedIcon fontSize="small" /> },
+    { name: 'Fire Safety', icon: <LocalFireDepartmentOutlinedIcon fontSize="small" /> },
+    { name: 'Communication', icon: <CellTowerOutlinedIcon fontSize="small" /> },
+    { name: 'Logistics', icon: <LocalShippingOutlinedIcon fontSize="small" /> },
+    { name: 'Drone Operator', icon: <FlightOutlinedIcon fontSize="small" /> },
+  ];
+
   async function handleRegister() {
+    if (!form.name || !form.phone) {
+        alert("Please enter Name and Phone");
+        return;
+    }
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (position) => {
         try {
@@ -108,9 +84,9 @@ export default function VolunteerPage() {
             lng: position.coords.longitude,
             active: 1
           });
-          setOpen(false);
           setForm({ name: '', phone: '', skills: 'First Aid' });
           loadVolunteers();
+          setOpenRegister(false);
           alert("Successfully registered with your live location locked!");
         } catch (e) {
           console.error('Failed to register', e);
@@ -124,26 +100,6 @@ export default function VolunteerPage() {
     }
   }
 
-  async function handleBroadcast() {
-    if (!broadcastMsg) return alert("Please enter an emergency message to broadcast.");
-    
-    // Get the commander's current location as the epicenter for the broadcast
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        await broadcastVolunteers({
-          message: broadcastMsg,
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          radiusKm: parseInt(broadcastRadius)
-        });
-        alert(`Emergency SMS/Push Broadcast sent to all active volunteers within ${broadcastRadius}km!`);
-        setBroadcastMsg('');
-      } catch (e) {
-        alert("Failed to send broadcast alert.");
-      }
-    });
-  }
-
   const filteredVolunteers = volunteers.filter(v => {
     if (!volunteerSearch) return true;
     const term = volunteerSearch.toLowerCase();
@@ -152,286 +108,351 @@ export default function VolunteerPage() {
   });
 
   return (
-    <Box sx={{ minHeight: '100vh', background: '#f4faf4' }}>
-      <TopNavBar />
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f8fafc', pb: 10, fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* 1. Hero Section */}
+      <Box sx={{ 
+        position: 'relative',
+        height: 450,
+        display: 'flex',
+        alignItems: 'center',
+        backgroundImage: 'url(/mountain-volunteer.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'top',
+      }}>
+        {/* Hero text removed as requested */}
+      </Box>
 
-      <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2} sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="h4" fontWeight={900} color="#102f25">Volunteer Command Center</Typography>
-            <Chip label="LIVE ROSTER" size="small" color="success" sx={{ fontWeight: 800, animation: `${pulse} 2s infinite` }} />
-          </Box>
-          <Button variant="contained" color="success" size="large" onClick={() => setOpen(true)} sx={{ textTransform: 'none', borderRadius: 3, px: 4 }}>
-            Register as Volunteer
-          </Button>
-        </Stack>
-
+      {/* 2. Main Content Grid */}
+      <Container maxWidth="xl" sx={{ mt: 4 }}>
         <Grid container spacing={4}>
-          <Grid item xs={12} lg={8}>
-            <Paper sx={{ borderRadius: 4, mb: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)', overflow: 'hidden' }}>
-              <Box sx={{ p: 3, background: 'linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)', color: 'white' }}>
-                <Stack direction="row" alignItems="center" spacing={2}>
-                  <CampaignRoundedIcon sx={{ fontSize: 32 }} />
-                  <Box>
-                    <Typography variant="h6" fontWeight={800}>Emergency Radius Broadcast</Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>Instantly ping all registered volunteers near your live location.</Typography>
-                  </Box>
-                </Stack>
-              </Box>
-              <Box sx={{ p: 3 }}>
-              <Stack spacing={2}>
-                <TextField
-                  fullWidth
-                    placeholder="e.g., Need 3 Medics at Sector 9 immediately. Respond if available."
-                  value={broadcastMsg}
-                  onChange={(e) => setBroadcastMsg(e.target.value)}
-                />
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField fullWidth select label="Radius" SelectProps={{ native: true }} value={broadcastRadius} onChange={(e) => setBroadcastRadius(e.target.value)}>
-                      <option value="5">5 km Radius</option>
-                      <option value="10">10 km Radius</option>
-                      <option value="20">20 km Radius</option>
-                  </TextField>
-                    <Button variant="contained" color="error" fullWidth onClick={handleBroadcast} startIcon={<CampaignRoundedIcon />} sx={{ fontWeight: 800, py: 1.5, fontSize: '1.05rem' }}>
-                    Send Broadcast
+          
+          {/* LEFT COLUMN */}
+          <Grid item xs={12} md={7} lg={8}>
+            <Stack spacing={4}>
+              
+              {/* Find Volunteers Near You */}
+              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="h6" fontWeight={800} color="#1a202c">
+                    Find Volunteers Near You
+                  </Typography>
+                  <Button 
+                    variant="contained" 
+                    startIcon={<GroupAddOutlinedIcon />}
+                    onClick={() => setOpenRegister(true)}
+                    sx={{ 
+                      bgcolor: '#0f4a30', 
+                      color: '#fff', 
+                      borderRadius: 1.5, 
+                      fontWeight: 700,
+                      boxShadow: '0 4px 12px rgba(15, 74, 48, 0.2)',
+                      '&:hover': { bgcolor: '#0a3622' }
+                    }}
+                  >
+                    Become a Volunteer
+                  </Button>
+                </Box>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={2}>
+                  <TextField 
+                    fullWidth 
+                    size="small" 
+                    placeholder="Enter your location" 
+                    value={volunteerSearch}
+                    onChange={(e) => setVolunteerSearch(e.target.value)}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start"><LocationOnOutlinedIcon fontSize="small" /></InputAdornment>,
+                      sx: { borderRadius: 1.5, bgcolor: '#ffffff' }
+                    }}
+                  />
+                  <Select 
+                    size="small" 
+                    value={radius} 
+                    onChange={(e) => setRadius(e.target.value)} 
+                    sx={{ minWidth: 160, borderRadius: 1.5, bgcolor: '#ffffff' }}
+                  >
+                    <MenuItem value="5 km Radius">5 km Radius</MenuItem>
+                    <MenuItem value="10 km Radius">10 km Radius</MenuItem>
+                    <MenuItem value="20 km Radius">20 km Radius</MenuItem>
+                  </Select>
+                  <Button 
+                    variant="contained" 
+                    startIcon={<SearchRoundedIcon />}
+                    sx={{ 
+                      bgcolor: '#0f4a30', 
+                      color: '#fff', 
+                      px: 3, 
+                      borderRadius: 1.5, 
+                      fontWeight: 700,
+                      boxShadow: 'none',
+                      whiteSpace: 'nowrap',
+                      '&:hover': { bgcolor: '#0a3622', boxShadow: 'none' }
+                    }}
+                  >
+                    Search
                   </Button>
                 </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  Broadcasts utilize the SMS gateway for guaranteed delivery.
+                <Box sx={{ bgcolor: '#e6f4ea', p: 1.5, borderRadius: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <GroupsOutlinedIcon sx={{ color: '#0f4a30', fontSize: 20 }} />
+                  <Typography variant="body2" color="#0f4a30" fontWeight={600}>
+                    Showing {filteredVolunteers.length} volunteers within {radius.split(' ')[0]} radius
+                  </Typography>
+                </Box>
+              </Paper>
+
+              {/* Volunteer Skills */}
+              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
+                <Typography variant="h6" fontWeight={800} color="#1a202c" mb={3}>
+                  Volunteer Skills
                 </Typography>
-              </Stack>
-              </Box>
-            </Paper>
-
-            <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, mb: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>
-                Volunteer Skills
-              </Typography>
-              <Grid container spacing={2}>
-                {skills.map((skill) => (
-                  <Grid item xs={6} sm={4} md={3} key={skill.name}>
-                    <Paper sx={{ p: 2, borderRadius: 3, border: '1px solid #f1f5f9', transition: 'all 0.2s', '&:hover': { borderColor: '#cbd5e1', transform: 'translateY(-4px)', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' } }}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Avatar sx={{ bgcolor: '#def7ec', color: '#047857', width: 38, height: 38 }}>
+                <Grid container spacing={2}>
+                  {allSkills.map((skill) => (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={skill.name}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 1.5, 
+                        p: 1.5, 
+                        border: '1px solid #e2e8f0', 
+                        borderRadius: 1.5,
+                        transition: 'border-color 0.2s',
+                        '&:hover': { borderColor: '#0f4a30' }
+                      }}>
+                        <Box sx={{ color: '#0f4a30', display: 'flex' }}>
                           {skill.icon}
-                        </Avatar>
-                        <Typography>{skill.name}</Typography>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-            </Paper>
+                        </Box>
+                        <Typography variant="body2" fontWeight={600} color="#1a202c">
+                          {skill.name}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Paper>
 
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-                  <Typography variant="subtitle1" fontWeight={800} gutterBottom>
-                    How It Works
-                  </Typography>
-                  <Stack spacing={2}>
-                    <Stack direction="row" spacing={2} alignItems="flex-start">
-                      <Avatar sx={{ bgcolor: '#dcfce7', color: '#047857' }}>
-                        <GroupsRoundedIcon />
-                      </Avatar>
-                      <Box>
-                        <Typography fontWeight={700}>Register</Typography>
-                        <Typography variant="body2" color="text.secondary">Create your profile and choose your skills.</Typography>
-                      </Box>
-                    </Stack>
-                    <Stack direction="row" spacing={2} alignItems="flex-start">
-                      <Avatar sx={{ bgcolor: '#dcfce7', color: '#047857' }}>
-                        <MapRoundedIcon />
-                      </Avatar>
-                      <Box>
-                        <Typography fontWeight={700}>Get Notified</Typography>
-                        <Typography variant="body2" color="text.secondary">Receive alerts and updates for nearby incidents.</Typography>
-                      </Box>
-                    </Stack>
-                    <Stack direction="row" spacing={2} alignItems="flex-start">
-                      <Avatar sx={{ bgcolor: '#dcfce7', color: '#047857' }}>
-                        <RocketLaunchRoundedIcon />
-                      </Avatar>
-                      <Box>
-                        <Typography fontWeight={700}>Respond</Typography>
-                        <Typography variant="body2" color="text.secondary">Accept tasks and coordinate with response teams.</Typography>
-                      </Box>
-                    </Stack>
-                    <Stack direction="row" spacing={2} alignItems="flex-start">
-                      <Avatar sx={{ bgcolor: '#dcfce7', color: '#047857' }}>
-                        <StarRoundedIcon />
-                      </Avatar>
-                      <Box>
-                        <Typography fontWeight={700}>Make a Difference</Typography>
-                        <Typography variant="body2" color="text.secondary">Support communities and save lives in the field.</Typography>
-                      </Box>
-                    </Stack>
-                  </Stack>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-                  <Typography variant="subtitle1" fontWeight={800} gutterBottom>
-                    Volunteer Benefits
-                  </Typography>
-                  <Stack spacing={2}>
-                    {whyVolunteer.map((item) => (
-                      <Paper key={item.title} sx={{ p: 2, borderRadius: 3, background: '#f4faf4' }}>
-                        <Stack direction="row" spacing={2} alignItems="center">
-                          <Avatar sx={{ bgcolor: '#d1fae5', color: '#047857', width: 42, height: 42 }}>
+              {/* How It Works */}
+              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
+                <Typography variant="h6" fontWeight={800} color="#1a202c" mb={4}>
+                  How It Works
+                </Typography>
+                <Grid container spacing={2} sx={{ position: 'relative' }}>
+                  {/* Dashed line background */}
+                  <Box sx={{ 
+                    position: 'absolute', 
+                    top: '28px', 
+                    left: '10%', 
+                    right: '10%', 
+                    height: 0, 
+                    borderTop: '2px dashed #cbd5e1', 
+                    zIndex: 0,
+                    display: { xs: 'none', md: 'block' }
+                  }} />
+                  
+                  {[
+                    { step: 1, title: 'Register', desc: 'Create your profile and choose your skills.', icon: <PersonOutlineRoundedIcon /> },
+                    { step: 2, title: 'Get Notified', desc: 'Receive alerts for disasters near you (within 10km).', icon: <RoomOutlinedIcon /> },
+                    { step: 3, title: 'Respond', desc: 'Accept the alert and coordinate with response teams.', icon: <GroupsOutlinedIcon /> },
+                    { step: 4, title: 'Make a Difference', desc: 'Help in relief operations and save lives.', icon: <VerifiedUserOutlinedIcon /> },
+                  ].map((item) => (
+                    <Grid item xs={12} sm={6} md={3} key={item.step} sx={{ position: 'relative', zIndex: 1 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'flex-start', md: 'center' }, textAlign: { xs: 'left', md: 'center' } }}>
+                        <Box sx={{ position: 'relative', mb: 2 }}>
+                          <Avatar sx={{ bgcolor: '#e6f4ea', color: '#0f4a30', width: 56, height: 56 }}>
                             {item.icon}
                           </Avatar>
-                          <Box>
-                            <Typography fontWeight={700}>{item.title}</Typography>
-                            <Typography variant="body2" color="text.secondary">{item.description}</Typography>
+                          <Box sx={{ 
+                            position: 'absolute', 
+                            bottom: -10, 
+                            right: -10, 
+                            bgcolor: '#0f4a30', 
+                            color: '#fff', 
+                            width: 24, height: 24, 
+                            borderRadius: '50%', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.75rem', fontWeight: 800, border: '2px solid #fff'
+                          }}>
+                            {item.step}
                           </Box>
-                        </Stack>
-                      </Paper>
-                    ))}
-                  </Stack>
-                </Paper>
-              </Grid>
-            </Grid>
+                        </Box>
+                        <Typography variant="subtitle2" fontWeight={800} color="#1a202c" mb={0.5}>{item.title}</Typography>
+                        <Typography variant="caption" color="#64748b" sx={{ maxWidth: 160 }}>{item.desc}</Typography>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Paper>
+
+            </Stack>
           </Grid>
 
-          <Grid item xs={12} lg={4}>
-            <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography variant="h6" fontWeight={800}>Active Volunteers</Typography>
-                <Chip label={`${filteredVolunteers.length} Ready`} size="small" color="success" sx={{ fontWeight: 700 }} />
-              </Stack>
+          {/* RIGHT COLUMN */}
+          <Grid item xs={12} md={5} lg={4}>
+            <Stack spacing={4}>
               
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Search by name or skill..."
-                value={volunteerSearch}
-                onChange={(e) => setVolunteerSearch(e.target.value)}
-                sx={{ mb: 3 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchRoundedIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              {/* Why Volunteer */}
+              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
+                <Typography variant="h6" fontWeight={800} color="#1a202c" mb={3}>
+                  Why Volunteer?
+                </Typography>
+                <Stack spacing={3} mb={3}>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Avatar sx={{ bgcolor: '#e6f4ea', color: '#0f4a30', width: 48, height: 48 }}>
+                      <GroupsOutlinedIcon />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={800} color="#1a202c">Make an Impact</Typography>
+                      <Typography variant="caption" color="#64748b">Your skills can save lives and bring hope in critical situations.</Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Avatar sx={{ bgcolor: '#e6f4ea', color: '#0f4a30', width: 48, height: 48 }}>
+                      <SchoolOutlinedIcon />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={800} color="#1a202c">Get Trained</Typography>
+                      <Typography variant="caption" color="#64748b">Access training, resources and guides to enhance your skills.</Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Avatar sx={{ bgcolor: '#e6f4ea', color: '#0f4a30', width: 48, height: 48 }}>
+                      <BadgeOutlinedIcon />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="subtitle2" fontWeight={800} color="#1a202c">Be Recognized</Typography>
+                      <Typography variant="caption" color="#64748b">Receive recognition for your service and dedication.</Typography>
+                    </Box>
+                  </Box>
+                </Stack>
+                <Button 
+                  endIcon={<ArrowRightAltRoundedIcon />} 
+                  sx={{ color: '#0f4a30', fontWeight: 700, p: 0, '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' } }}
+                  disableRipple
+                >
+                  Learn More
+                </Button>
+              </Paper>
 
-              <Stack spacing={2}>
-                {filteredVolunteers.length > 0 ? filteredVolunteers.map((volunteer, idx) => (
-                  <Box key={volunteer.id || idx} sx={{ p: 2, borderRadius: 3, border: '1px solid #f1f5f9', transition: 'all 0.2s', '&:hover': { borderColor: '#cbd5e1', transform: 'translateX(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' } }}>
-                    <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-                      <Stack direction="row" spacing={2} alignItems="center">
-                        <Badge
-                          overlap="circular"
-                          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                          variant="dot"
-                          color="success"
-                          sx={{ '& .MuiBadge-badge': { border: '2px solid white', width: 12, height: 12, borderRadius: '50%' } }}
-                        >
-                          <Avatar sx={{ bgcolor: '#dcfce7', color: '#047857' }}>
-                            {volunteer.name?.charAt(0) || 'V'}
-                          </Avatar>
-                        </Badge>
+              {/* Active Volunteers */}
+              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                  <Typography variant="h6" fontWeight={800} color="#1a202c">
+                    Active Volunteers
+                  </Typography>
+                  <Typography component={RouterLink} to="#" variant="body2" color="#0f4a30" fontWeight={700} sx={{ textDecoration: 'none' }}>
+                    View All
+                  </Typography>
+                </Box>
+                <Stack spacing={2.5} mb={3}>
+                  {filteredVolunteers.slice(0, 4).map((vol, idx) => (
+                    <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        <Avatar sx={{ width: 40, height: 40, bgcolor: '#cbd5e1' }} src={`https://i.pravatar.cc/150?u=${vol.name || idx}`} />
                         <Box>
-                          <Typography fontWeight={700}>{volunteer.name || 'Anonymous'}</Typography>
-                          <Typography variant="body2" color="text.secondary">{volunteer.skills || volunteer.role || 'General'}</Typography>
+                          <Typography variant="subtitle2" fontWeight={700} color="#1a202c">{vol.name || 'Anonymous'}</Typography>
+                          <Typography variant="caption" color="#64748b">{vol.skills || vol.role || 'General'}</Typography>
                         </Box>
-                      </Stack>
-                      <Typography variant="body2" color="success.main" fontWeight={700} sx={{ flexShrink: 0 }}>
-                        {volunteer.distance || '2.1 km'}
-                      </Typography>
-                    </Stack>
-                  </Box>
-                )) : (
-                  <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>No volunteers found matching your search.</Typography>
-                )}
-              </Stack>
-            </Paper>
-            <Paper sx={{ p: 3, borderRadius: 4, mt: 4, boxShadow: '0 18px 40px rgba(15,23,42,0.08)' }}>
-              <Typography variant="subtitle1" fontWeight={800} gutterBottom>
-                Resources for Volunteers
-              </Typography>
-              <Stack spacing={2}>
-                <Paper sx={{ p: 2, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography fontWeight={700}>Survival & Rescue Guide</Typography>
-                    <Typography variant="body2" color="text.secondary">Offline guide for emergency situations</Typography>
-                  </Box>
-                  <Button size="small" variant="text" sx={{ textTransform: 'none' }}>View</Button>
-                </Paper>
-                <Paper sx={{ p: 2, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography fontWeight={700}>Training Materials</Typography>
-                    <Typography variant="body2" color="text.secondary">Access training videos and documents</Typography>
-                  </Box>
-                  <Button size="small" variant="text" sx={{ textTransform: 'none' }}>View</Button>
-                </Paper>
-                <Paper sx={{ p: 2, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography fontWeight={700}>Safety Protocols</Typography>
-                    <Typography variant="body2" color="text.secondary">Guidelines to keep you safe in operations</Typography>
-                  </Box>
-                  <Button size="small" variant="text" sx={{ textTransform: 'none' }}>View</Button>
-                </Paper>
-              </Stack>
-            </Paper>
+                      </Box>
+                      <Box sx={{ bgcolor: '#f1f5f9', px: 1, py: 0.5, borderRadius: 1 }}>
+                        <Typography variant="caption" fontWeight={600} color="#475569">{vol.distance || `${(Math.random()*10+1).toFixed(1)} km`}</Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                  {filteredVolunteers.length === 0 && (
+                    <Typography variant="body2" color="text.secondary" textAlign="center">No active volunteers found.</Typography>
+                  )}
+                </Stack>
+                <Button 
+                  fullWidth 
+                  variant="outlined" 
+                  sx={{ 
+                    borderColor: '#cbd5e1', 
+                    color: '#0f4a30', 
+                    borderRadius: 1.5, 
+                    fontWeight: 700, 
+                    py: 1,
+                    textTransform: 'none',
+                    '&:hover': { borderColor: '#0f4a30', bgcolor: 'transparent' }
+                  }}
+                >
+                  View More Volunteers
+                </Button>
+              </Paper>
+
+              {/* Resources for Volunteers */}
+              <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
+                <Typography variant="h6" fontWeight={800} color="#1a202c" mb={3}>
+                  Resources for Volunteers
+                </Typography>
+                <Stack spacing={0}>
+                  {[
+                    { title: 'Survival & Rescue Guide', desc: 'Offline guide for emergency situations', icon: <MenuBookOutlinedIcon /> },
+                    { title: 'Training Materials', desc: 'Access training videos and documents', icon: <OndemandVideoOutlinedIcon /> },
+                    { title: 'Safety Protocols', desc: 'Guidelines to keep you safe in operations', icon: <HealthAndSafetyOutlinedIcon /> },
+                  ].map((res, idx) => (
+                    <React.Fragment key={idx}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                          <Box sx={{ color: '#0f4a30', mt: 0.5 }}>{res.icon}</Box>
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight={700} color="#1a202c">{res.title}</Typography>
+                            <Typography variant="caption" color="#64748b">{res.desc}</Typography>
+                          </Box>
+                        </Box>
+                        <IconButton size="small" sx={{ color: '#0f4a30' }}>
+                          <ArrowRightAltRoundedIcon />
+                        </IconButton>
+                      </Box>
+                      {idx < 2 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </Stack>
+              </Paper>
+
+            </Stack>
           </Grid>
         </Grid>
       </Container>
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden' } }}>
-        <Box sx={{ p: 3, background: 'linear-gradient(135deg, #064e3b 0%, #047857 100%)', color: 'white' }}>
-          <Typography variant="h5" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <VolunteerActivismRoundedIcon fontSize="large" /> Volunteer Registration
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9, mt: 1 }}>
-            Join the active roster to receive emergency broadcast alerts and assist in live operations.
-          </Typography>
-        </Box>
-        <DialogContent sx={{ p: 4 }}>
+
+      {/* Registration Modal Dialog */}
+      <Dialog open={openRegister} onClose={() => setOpenRegister(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#1a202c', borderBottom: '1px solid #f1f5f9' }}>
+          Official Volunteer Registration
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
           <Stack spacing={3}>
+            <Alert severity="info" sx={{ borderRadius: 2 }}>
+              <Typography variant="body2" fontWeight={700}>GPS Location Lock</Typography>
+              <Typography variant="caption">Submitting this form logs your current location to dispatch you effectively.</Typography>
+            </Alert>
             <TextField 
               label="Full Name" 
               fullWidth 
+              size="small"
               value={form.name} 
               onChange={e => setForm({...form, name: e.target.value})} 
-              InputProps={{ startAdornment: <InputAdornment position="start"><PersonRoundedIcon color="action" /></InputAdornment> }}
             />
             <TextField 
               label="Phone Number" 
               fullWidth 
+              size="small"
               value={form.phone} 
               onChange={e => setForm({...form, phone: e.target.value})} 
-              InputProps={{ startAdornment: <InputAdornment position="start"><PhoneRoundedIcon color="action" /></InputAdornment> }}
             />
             <Autocomplete
               freeSolo
-              options={skills.map(s => s.name)}
+              size="small"
+              options={allSkills.map(s => s.name)}
               value={form.skills}
               onInputChange={(event, newValue) => setForm({...form, skills: newValue || ''})}
               renderInput={(params) => (
-                <TextField 
-                  {...params} 
-                  label="Primary Skills" 
-                  fullWidth 
-                  helperText="Select a predefined skill or type your own." 
-                  InputProps={{ 
-                    ...params.InputProps, 
-                    startAdornment: (
-                      <>
-                        <InputAdornment position="start" sx={{ pl: 1 }}><StarRoundedIcon color="action" /></InputAdornment>
-                        {params.InputProps.startAdornment}
-                      </>
-                    )
-                  }}
-                />
+                <TextField {...params} label="Primary Skill" fullWidth helperText="Select a skill or type your own" />
               )}
             />
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 1, bgcolor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
-          <Button onClick={() => setOpen(false)} color="inherit" sx={{ fontWeight: 700, px: 3 }}>Cancel</Button>
-          <Button onClick={handleRegister} variant="contained" color="success" startIcon={<LocationOnRoundedIcon />} sx={{ fontWeight: 800, px: 4, py: 1.5, borderRadius: 3, boxShadow: '0 8px 16px rgba(16, 185, 129, 0.3)' }}>
+        <DialogActions sx={{ p: 3, borderTop: '1px solid #f1f5f9' }}>
+          <Button onClick={() => setOpenRegister(false)} sx={{ color: '#64748b', fontWeight: 600 }}>Cancel</Button>
+          <Button variant="contained" onClick={handleRegister} sx={{ bgcolor: '#0f4a30', fontWeight: 700, borderRadius: 1.5, boxShadow: 'none' }}>
             Register & Lock GPS
           </Button>
         </DialogActions>

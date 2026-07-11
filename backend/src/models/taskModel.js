@@ -36,12 +36,12 @@ function getTaskById(taskId) {
   return db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
 }
 
-function createTask({ incidentId, title, details, assignedAgency, notificationAgencies, status, createdBy }) {
+function createTask({ incidentId, title, details, assignedAgency, notificationAgencies, status, createdBy, officeTags }) {
   return db
     .prepare(
-      "INSERT INTO tasks (incident_id, title, details, assigned_agency, notification_agencies, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO tasks (incident_id, title, details, assigned_agency, notification_agencies, status, created_by, office_tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     )
-    .run(incidentId, title, details || "", assignedAgency || null, JSON.stringify(notificationAgencies || []), status, createdBy);
+    .run(incidentId, title, details || "", assignedAgency || null, JSON.stringify(notificationAgencies || []), status, createdBy, JSON.stringify(officeTags || []));
 }
 
 function updateTask(taskId, { assignedAgency, status }) {

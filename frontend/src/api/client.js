@@ -9,6 +9,8 @@ const api = axios.create({
   }
 });
 
+
+
 // Reads the saved JWT so every request can authenticate automatically.
 export function getStoredToken() {
   return localStorage.getItem('sdrf_token') || '';
@@ -25,8 +27,10 @@ export function clearAuthToken() {
 }
 
 api.interceptors.request.use((config) => {
+  // Do not send the Authorization header for the login request.
+  // If an old, expired token is in localStorage, it could cause the login to fail.
   const token = getStoredToken();
-  if (token) {
+  if (token && config.url !== '/auth/login') {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -36,8 +40,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      // Token has expired or is invalid
+    // Don't intercept 401s from the login endpoint, as that's expected for bad credentials.
+    // The login page will handle that error itself.
+    if (error.response && error.response.status === 401 && error.config.url !== '/auth/login') {
+      // Token has expired or is invalid on a protected route
       clearAuthToken();
       window.location.href = '/login'; // Redirect to login page
     }
@@ -51,9 +57,15 @@ export async function login(payload) {
   return data;
 }
 
-// Creates a new login account with the operator profile fields.
-export async function register(payload) {
-  const { data } = await api.post('/auth/register', payload);
+// Signs up a new public user.
+export async function signup(payload) {
+  const { data } = await api.post('/auth/signup', payload);
+  return data;
+}
+
+// Creates a new user account (Admin only).
+export async function createUser(payload) {
+  const { data } = await api.post('/auth/create-user', payload);
   return data;
 }
 
@@ -177,6 +189,12 @@ export async function createIncident(payload) {
   return data;
 }
 
+// Fetch all incidents
+export async function fetchIncidents() {
+  const { data } = await api.get('/incidents');
+  return data;
+}
+
 // Upload media file for an incident (FormData)
 export async function uploadIncidentMedia(incidentId, formData) {
   const { data } = await api.post(`/incidents/${incidentId}/media`, formData, {
@@ -218,6 +236,37 @@ export async function scanEquipment(equipmentId, payload) {
 // Fetches survival guides for offline caching
 export async function fetchGuides() {
   const { data } = await api.get('/guides');
+  return data;
+}
+
+export async function markAlertResponded(alertId, payload) {
+  const { data } = await api.post(`/alerts/${alertId}/respond`, payload);
+  return data;
+}
+
+export async function getVapidPublicKey() {
+  const { data } = await api.get('/push/vapid-public-key');
+  return data;
+}
+
+export async function subscribeToPush(subscription) {
+  const { data } = await api.post('/push/subscribe', subscription);
+  return data;
+}
+
+export async function fetchMutedAlerts() {
+  const { data } = await api.get('/mutes');
+  return data;
+}
+
+export async function muteAlert(payload) {
+  const { data } = await api.post('/mutes', payload);
+  return data;
+}
+
+export async function fetchAuditLogs(office) {
+  const url = office ? `/audit?office=${encodeURIComponent(office)}` : '/audit';
+  const { data } = await api.get(url);
   return data;
 }
 

@@ -11,12 +11,12 @@ function listBulletins() {
     .all();
 }
 
-function createBulletin({ category, message, authorId }) {
+function createBulletin({ category, message, authorId, officeTags }) {
   return db
     .prepare(
-      "INSERT INTO bulletins (category, message, author_id) VALUES (?, ?, ?)"
+      "INSERT INTO bulletins (category, message, author_id, office_tags) VALUES (?, ?, ?, ?)"
     )
-    .run(category, message, authorId);
+    .run(category, message, authorId, JSON.stringify(officeTags || []));
 }
 
 module.exports = {

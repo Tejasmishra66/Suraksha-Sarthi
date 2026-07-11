@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { clearAuthToken, login, setAuthToken } from '../api/client';
+import { clearAuthToken, login, signup, setAuthToken } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -34,6 +34,17 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Signs up a user but does not automatically log them in (redirects to login).
+  async function signUp(credentials) {
+    setLoading(true);
+    try {
+      const result = await signup(credentials);
+      return result;
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // Removes local session state so the user returns to the login screen.
   function signOut() {
     setUser(null);
@@ -43,7 +54,7 @@ export function AuthProvider({ children }) {
   }
 
   const value = useMemo(
-    () => ({ user, token, loading, isAuthenticated: Boolean(token), signIn, signOut }),
+    () => ({ user, token, loading, isAuthenticated: Boolean(token), signIn, signUp, signOut }),
     [user, token, loading]
   );
 

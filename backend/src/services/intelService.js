@@ -5,7 +5,7 @@ function listIntelPins() {
 }
 
 function createIntelPin(payload) {
-  const { lat, lon, department, note } = payload;
+  const { lat, lon, department, note, officeTags } = payload;
   if (lat == null || lon == null || !department || !note) {
     const error = new Error("lat, lon, department, and note are required");
     error.statusCode = 400;
@@ -16,7 +16,8 @@ function createIntelPin(payload) {
     lat: Number(lat),
     lon: Number(lon),
     department,
-    note
+    note,
+    officeTags
   });
 
   return { id: result.lastInsertRowid, lat: Number(lat), lon: Number(lon), department, note };

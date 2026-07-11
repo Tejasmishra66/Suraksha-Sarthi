@@ -1,6 +1,17 @@
 const bulletinModel = require("../models/bulletinModel");
 
-const ALLOWED_CATEGORIES = ["Connectivity", "Utility Status", "Medical Support"];
+const ALLOWED_CATEGORIES = [
+  "Connectivity",
+  "Utility Status",
+  "Medical Support",
+  "Weather Alerts",
+  "Road & Transport",
+  "Health Advisory",
+  "Rescue Operations",
+  "Training & Drills",
+  "General Information",
+  "Others"
+];
 
 function listBulletins() {
   return bulletinModel.listBulletins();
@@ -8,7 +19,7 @@ function listBulletins() {
 
 function createBulletin(payload, authorId) {
   // Creates a macro-update bulletin for the shared operations feed.
-  const { category, message } = payload;
+  const { category, message, officeTags } = payload;
   if (!category || !message) {
     const error = new Error("category and message are required");
     error.statusCode = 400;
@@ -24,7 +35,8 @@ function createBulletin(payload, authorId) {
   const result = bulletinModel.createBulletin({
     category,
     message,
-    authorId
+    authorId,
+    officeTags
   });
 
   return { id: result.lastInsertRowid, category, message };

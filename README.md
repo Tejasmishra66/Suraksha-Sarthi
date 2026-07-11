@@ -63,21 +63,34 @@ This project uses a backend-first disaster operations stack. The table below bre
 - DevOps and delivery: Docker, Docker Compose, `.env` configuration, and backend-served static uploads.
 - Quality and testing: Jest and Supertest for API tests.
 
+## Security & Access Model
+
+Suraksha Sarthi operates on a strict **4-tier trust model**. Account creation with a verified mobile number is compulsory for all users to prevent spam and ensure reliable SMS escalation.
+
+1. **Citizens (Public / Users)**: Can view the live map, weather, and report emergencies. Read-only access to public data.
+2. **Volunteers**: Same as citizens, but receive automated SMS alerts when an incident occurs near their GPS location so they can respond.
+3. **Department Users (Police, Fire, Medical)**: Can verify/reject incoming emergency reports, view internal field reports, and manage equipment/QR scanning.
+4. **SDRF Officers (Admins)**: Full system control. Can create official accounts, view system-wide audit logs, and broadcast bulletins.
+
 ## Key Features
 
-- Task board with status changes
-- Macro-updates bulletin feed for nodal officer announcements
-- Intel pin map for operational notes by department
-- Agency heartbeat dashboard with offline detection and fallback reminder SMS
-- Geofenced alerts and escalation flow
-- Offline queue and sync flush endpoint
-- Incident media uploads with SHA-256 integrity metadata
-- Incident reports can be created with either coordinates or a detailed address
-- Incident verification workflow
-- Volunteer and resource management with department selection and capability tags
-- Macro updates bulletin board at `/bulletins`
-- Intel pin management at `/intel`
-- Agency heartbeat tracking at `/ping` and `/status`
+- **Strict Role-Based Access Control (RBAC)**: All sensitive routes (incident verification, agency management) are protected by strict JWT role guards.
+- **Brute-Force Protection**: Custom in-memory rate limiting on authentication routes (10 attempts / 15 mins).
+- **Automated SMS Escalation**: System pulls real user phone numbers from the database for background watchdog alerts and dispatching, skipping hardcoded fallbacks.
+- **Real-Time Offline Indicator**: Background queue flushing visibility for reliable operations during network drops.
+- **Geofenced Live Alerts**: Map-based auto-warnings for users entering high-severity disaster zones.
+- **Office & District Scoping**: Granular visibility tagging (`officeTags`) ensuring incidents and alerts are siloed properly to relevant districts and departments (e.g. `Mandi_Police`).
+- **Push Notification & Mute System**: Web-push integration to alert officers, with the ability to acknowledge/mute specific noisy alerts.
+- **Audit Logging**: Immutable chain-of-custody tracking in the Admin dashboard.
+- **Volunteer GPS Lock**: Volunteer registration directly locks live location for rapid dispatch and distance calculation.
+- **Targeted Operations News**: Homepage feed showing real-time bulletins and team operations.
+- **Do's & Don'ts Guidelines**: Tailored emergency guidelines (Landslide, Flash Flood, Earthquake, Forest Fire) directly accessible.
+- Task board with status changes and agency dropdowns.
+- Macro-updates bulletin feed for nodal officer announcements.
+- Intel pin map for operational notes by department.
+- Agency heartbeat dashboard with offline detection and fallback reminder SMS.
+- Incident media uploads with SHA-256 integrity metadata.
+- Incident verification workflow.
 
 ## Quick Start
 

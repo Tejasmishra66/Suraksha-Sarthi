@@ -1,7 +1,9 @@
 const incidentService = require("../services/incidentService");
+const filterByOffice = require("../utils/officeFilter");
 
-function listIncidents(_req, res) {
-  return res.json(incidentService.listIncidents());
+function listIncidents(req, res) {
+  const incidents = incidentService.listIncidents();
+  return res.json(filterByOffice(incidents, req.user));
 }
 
 function createIncident(req, res) {

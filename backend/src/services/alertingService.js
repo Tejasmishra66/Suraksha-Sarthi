@@ -3,6 +3,7 @@ const alertModel = require("../models/alertModel");
 const volunteerModel = require("../models/volunteerModel");
 const { haversineKm } = require("../utils/geo");
 const { sendSms } = require("./smsService");
+const pushService = require("./pushService");
 
 const DISASTER_TO_SKILLS = {
 	Flood: ["SAR", "Medical", "Debris"],
@@ -42,7 +43,7 @@ function findVolunteersInRadius(lat, lng, radiusKm, requiredSkills = []) {
 	});
 }
 
-function createAlertAndNotify({ disasterType, lat, lng, radiusKm = 10, severity = "medium", createdBy }) {
+function createAlertAndNotify({ disasterType, lat, lng, radiusKm = 10, severity = "medium", createdBy, officeTags }) {
 	// Creates the alert row, dispatches volunteer notifications, and records recipients.
 	if (!disasterType || lat == null || lng == null) {
 		const error = new Error("disasterType, lat, and lng are required");
@@ -56,7 +57,8 @@ function createAlertAndNotify({ disasterType, lat, lng, radiusKm = 10, severity 
 		lng: Number(lng),
 		radiusKm: Number(radiusKm),
 		severity,
-		createdBy
+		createdBy,
+        officeTags
 	});
 
 	const alertId = alertResult.lastInsertRowid;
@@ -80,6 +82,12 @@ function createAlertAndNotify({ disasterType, lat, lng, radiusKm = 10, severity 
 			channel: "app"
 		});
 	});
+
+    pushService.notifyOffices(officeTags || ["State"], {
+        title: "New High Priority Alert",
+        body: `${disasterType} alert created. Please review.`,
+        url: "/map"
+    }).catch(e => console.error("Push Error:", e));
 
 	return {
 		alertId,
@@ -130,10 +138,14 @@ function startEscalationMonitor() {
 					channel: "escalation_sms"
 				});
 
-				sendSms(
-					"+910000000000",
-					`Escalation: alert ${alert.id} (${alert.disaster_type}) has no response in 5 minutes.`
-				);
+				// Use the actual phone number from the agency head's user record.
+				// Skip silently if no phone is registered rather than calling a placeholder.
+				if (user.phone) {
+					sendSms(
+						user.phone,
+						`SDRF Escalation: Alert #${alert.id} (${alert.disaster_type}) has had no response for 5 minutes. Immediate action required.`
+					);
+				}
 			});
 		});
 	}, 60 * 1000);

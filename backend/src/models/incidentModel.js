@@ -11,8 +11,8 @@ function getIncidentById(incidentId) {
 function createIncident(data) {
   const statement = db.prepare(
     `INSERT INTO incidents
-      (title, description, disaster_type, lat, lng, address, status, agency_assigned, verification_state, media_hash, media_timestamp, media_gps, media_ref)
-     VALUES (?, ?, ?, ?, ?, ?, 'New', ?, 'Unverified', ?, ?, ?, ?)`
+      (title, description, disaster_type, lat, lng, address, status, agency_assigned, verification_state, media_hash, media_timestamp, media_gps, media_ref, office_tags)
+     VALUES (?, ?, ?, ?, ?, ?, 'New', ?, 'Unverified', ?, ?, ?, ?, ?)`
   );
 
   return statement.run(
@@ -26,7 +26,8 @@ function createIncident(data) {
     data.mediaHash,
     data.mediaTimestamp,
     data.mediaGps,
-    data.mediaRef
+    data.mediaRef,
+    JSON.stringify(data.officeTags || [])
   );
 }
 

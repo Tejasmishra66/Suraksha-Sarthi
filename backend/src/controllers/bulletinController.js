@@ -1,7 +1,9 @@
 const bulletinService = require("../services/bulletinService");
+const filterByOffice = require("../utils/officeFilter");
 
-function listBulletins(_req, res) {
-  return res.json(bulletinService.listBulletins());
+function listBulletins(req, res) {
+  const bulletins = bulletinService.listBulletins();
+  return res.json(filterByOffice(bulletins, req.user));
 }
 
 function createBulletin(req, res) {

@@ -36,7 +36,7 @@ function listTasks() {
   return taskModel.listTasks();
 }
 
-function createTask({ incidentId, title, details, assignedAgency, notificationAgencies, status = "New", createdBy }) {
+function createTask({ incidentId, title, details, assignedAgency, notificationAgencies, status = "New", createdBy, officeTags }) {
   // Validates and creates task cards for digital handshake workflow.
   if (!incidentId || !title) {
     const error = new Error("incidentId and title are required");
@@ -58,7 +58,8 @@ function createTask({ incidentId, title, details, assignedAgency, notificationAg
     assignedAgency,
     notificationAgencies: agenciesToNotify,
     status,
-    createdBy
+    createdBy,
+    officeTags
   });
 
   const agencyHeads = getAgencyHeadsByAgencies(agenciesToNotify);

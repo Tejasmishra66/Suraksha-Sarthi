@@ -59,6 +59,13 @@ function runMigrations() {
   ensureColumn("users", "district", "district TEXT");
   ensureColumn("volunteers", "place", "place TEXT");
   ensureColumn("tasks", "notification_agencies", "notification_agencies TEXT");
+  
+  ensureColumn("incidents", "office_tags", "office_tags TEXT");
+  ensureColumn("tasks", "office_tags", "office_tags TEXT");
+  ensureColumn("bulletins", "office_tags", "office_tags TEXT");
+  ensureColumn("alerts", "office_tags", "office_tags TEXT");
+  ensureColumn("intel_pins", "office_tags", "office_tags TEXT");
+
   seedAgencyHeadPhones();
 
   // Initialize tables for Equipment Tracking (Asset Management) and Offline Guides
@@ -90,6 +97,37 @@ function runMigrations() {
       content TEXT,
       version INTEGER DEFAULT 1,
       download_url TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS muted_alerts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      alert_id TEXT NOT NULL,
+      alert_type TEXT NOT NULL, -- 'incident', 'task', 'bulletin', 'alert'
+      office TEXT NOT NULL,
+      muted_by INTEGER,
+      muted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      office TEXT,
+      action TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id TEXT,
+      details TEXT,
+      ip_address TEXT,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS web_push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      office TEXT,
+      endpoint TEXT UNIQUE NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
 }

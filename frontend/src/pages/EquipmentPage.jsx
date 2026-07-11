@@ -1,365 +1,402 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Avatar,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Container,
-  TextField,
-  Grid,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-  Paper,
-  Menu,
-  MenuItem,
-  Autocomplete
+  Box, Container, Grid, Paper, Stack, Typography, Chip, Button, 
+  Select, MenuItem, Tabs, Tab, TextField, InputAdornment, Avatar,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton,
+  Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel, CircularProgress
 } from '@mui/material';
-import TopNavBar from '../components/TopNavBar';
-import QrCodeScannerRoundedIcon from '@mui/icons-material/QrCodeScannerRounded';
-import { fetchEquipment, createEquipment, scanEquipment } from '../api/client';
+import {
+  QrCodeScannerRounded as QrCodeIcon,
+  LocalShippingRounded as DispatchIcon,
+  CheckCircleOutlineRounded as ConfirmIcon,
+  BuildRounded as MaintenanceIcon,
+  AddRounded as AddIcon,
+  SearchRounded as SearchIcon,
+  VisibilityRounded as ViewIcon,
+  MoreHorizRounded as MoreIcon,
+  ArrowUpwardRounded as ArrowUpIcon,
+  SyncRounded as SyncIcon,
+  InventoryRounded as BoxIcon,
+  WarningRounded as WarningIcon,
+  ErrorOutlineRounded as ErrorIcon,
+  CheckCircleRounded as SuccessIcon
+} from '@mui/icons-material';
 
-const getStatusColor = (status) => {
-  const s = (status || '').toLowerCase();
-  if (s === 'available' || s === 'confirm') return 'success';
-  if (s === 'maintenance') return 'warning';
-  if (s === 'in_use' || s === 'in use') return 'primary';
-  if (s === 'dispatched' || s === 'in transit' || s === 'dispatch') return 'info';
-  return 'default';
+import { fetchEquipment, createEquipment } from '../api/client';
+
+const RECENT_ACTIVITY = [];
+
+const CATEGORY_STATS = [];
+
+const getStatusStyles = (status) => {
+  const s = status?.toLowerCase() || '';
+  if (s === 'in use') return { color: '#2563eb', bg: '#dbeafe' };
+  if (s === 'available') return { color: '#16a34a', bg: '#dcfce7' };
+  if (s === 'in transit') return { color: '#7c3aed', bg: '#ede9fe' };
+  if (s === 'maintenance') return { color: '#ea580c', bg: '#ffedd5' };
+  return { color: '#475569', bg: '#f1f5f9' };
 };
-
-const equipmentCategoryMap = {
-  'Inflatable Rescue Boat': 'Water Rescue',
-  'Life Jacket': 'Water Rescue',
-  'First Aid Kit': 'Medical Equipment',
-  'Ropes & Carabiners': 'Climbing & Rope Rescue',
-  'Fire Extinguisher': 'Fire Safety',
-  'Satellite Phone': 'Communication',
-  'Portable Generator': 'Power & Lighting',
-  'High-Capacity Water Pump': 'Water Management',
-  'Heavy-Duty Chainsaw': 'Cutting & Clearing',
-  'Evacuation Stretcher': 'Medical Equipment',
-  'Drone (UAV)': 'Reconnaissance',
-  'Thermal Imaging Camera': 'Reconnaissance',
-  'Hydraulic Rescue Tool (Jaws of Life)': 'Heavy Rescue',
-  'Breathing Apparatus (SCBA)': 'Fire Safety',
-  'Emergency Floodlights': 'Power & Lighting'
-};
-
-const predefinedEquipmentNames = Object.keys(equipmentCategoryMap);
-const predefinedCategories = Array.from(new Set(Object.values(equipmentCategoryMap)));
-
-const predefinedStatuses = [
-  'Available',
-  'In Use',
-  'Maintenance',
-  'Dispatched',
-  'In Transit'
-];
 
 export default function EquipmentPage() {
-  const [equipmentRows, setEquipmentRows] = useState([]);
-  const [activeView, setActiveView] = useState('inventory');
-  const [scanForm, setScanForm] = useState({ qr_code: '', action: 'scan' });
-  const [form, setForm] = useState({ name: '', type: 'Rescue Gear', status: 'Available', location: 'HQ Store', quantity: 1 });
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [equipment, setEquipment] = useState([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [form, setForm] = useState({
+    qr_code: '', name: '', category: 'Rescue Gear', location: '', status: 'available'
+  });
 
-  useEffect(() => {
-    loadEquipment();
-  }, []);
-
-  async function loadEquipment() {
-    try {
-      const data = await fetchEquipment();
-      setEquipmentRows(data || []);
-    } catch (e) {
-      console.error('Failed to load equipment', e);
-    }
-  }
-
-  async function handleAddEquipment() {
-    try {
-      await createEquipment({ ...form, category: form.type });
-      setActiveView('inventory');
-      setForm({ name: '', type: 'Rescue Gear', status: 'Available', location: 'HQ Store', quantity: 1 });
-      loadEquipment();
-    } catch (e) {
-      console.error('Failed to add equipment', e);
-    }
-  }
-
-  async function handleScanSubmit() {
-    if (!scanForm.qr_code) return alert("Please enter or scan a QR code");
-    
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        await scanEquipment(scanForm.qr_code, {
-          action: scanForm.action,
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude
-        });
-        alert("Equipment status updated and location locked!");
-        setActiveView('inventory');
-        setScanForm({ qr_code: '', action: 'scan' });
-        loadEquipment();
-      } catch (e) {
-        alert("Failed to process scan. Please verify the QR Code.");
+  const loadEquipment = () => {
+    fetchEquipment().then(data => {
+      if (data && data.length > 0) {
+        setEquipment(data.map(d => ({
+          id: d.qr_code || `EQ-${d.id}`,
+          name: d.name || 'Unknown',
+          category: d.type || d.category || 'General',
+          location: d.location || 'HQ Store',
+          status: d.status || 'Available',
+          date: new Date(d.last_scanned_at || d.updated_at || Date.now()).toLocaleString()
+        })));
       }
-    }, () => {
-      alert("Location access is required to track equipment.");
-    });
-  }
+    }).catch(e => console.log('Could not load equipment.'));
+  };
 
-  const dynamicRecentActivity = useMemo(() => {
-    return [...equipmentRows]
-      .sort((a, b) => new Date(b.updated_at || b.last_scanned_at || 0) - new Date(a.updated_at || a.last_scanned_at || 0))
-      .slice(0, 4)
-      .map(item => ({
-        title: `${item.name || 'Item'} (${item.qr_code || `EQ-${item.id}`}) status: ${item.status || 'Available'}`,
-        time: new Date(item.updated_at || item.last_scanned_at || Date.now()).toLocaleDateString(),
-        user: item.location || 'HQ Store'
-      }));
-  }, [equipmentRows]);
+  useEffect(() => { loadEquipment(); }, []);
 
-  const categoryStats = useMemo(() => {
-    const counts = {};
-    equipmentRows.forEach(item => {
-      const cat = item.type || item.category || 'General';
-      counts[cat] = (counts[cat] || 0) + 1;
-    });
-    const total = equipmentRows.length || 1;
-    const colors = ['#84cc16', '#2563eb', '#f97316', '#8b5cf6', '#0f766e', '#eab308'];
-    return Object.keys(counts).map((key, i) => ({
-      label: key,
-      value: `${counts[key]} (${Math.round((counts[key]/total)*100)}%)`,
-      color: colors[i % colors.length]
-    }));
-  }, [equipmentRows]);
+  const handleAddSubmit = async () => {
+    if (!form.qr_code || !form.name) {
+      alert('QR Code and Name are required.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createEquipment({
+        qr_code: form.qr_code,
+        name: form.name,
+        category: form.category,
+        status: form.status,
+        location: form.location || 'HQ Store',
+      });
+      setSuccess(true);
+      setForm({ qr_code: '', name: '', category: 'Rescue Gear', location: '', status: 'available' });
+      loadEquipment(); // Refresh table live
+      setTimeout(() => { setSuccess(false); setAddOpen(false); }, 1500);
+    } catch (e) {
+      alert('Failed to add equipment: ' + (e?.response?.data?.message || e.message));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f4faf4' }}>
-      <TopNavBar />
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f4f6f8', fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* 1. HERO SECTION */}
+      <Box sx={{ 
+        position: 'relative',
+        height: 450,
+        backgroundImage: 'url(/mountain-equipment.jpg)', // Using mountain equipment image
+        backgroundSize: 'cover',
+        backgroundPosition: 'top',
+        pt: 8, pb: 4, px: { xs: 2, md: 6 }
+      }}>
+        {/* Filter removed as requested */}
+        
+        {/* Hero text removed as requested */}
+      </Box>
 
-      <Container maxWidth="lg" sx={{ py: { xs: 4, md: 6 } }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2} sx={{ mb: 4 }}>
-          <Box>
-            {activeView !== 'inventory' && (
-              <Button onClick={() => setActiveView('inventory')} sx={{ mb: 1, textTransform: 'none', fontWeight: 700 }}>← Back to Dashboard</Button>
-            )}
-            <Typography variant="h4" fontWeight={900} color="#102f25">{activeView === 'inventory' ? 'Equipment Dashboard' : activeView === 'add' ? 'Add New Equipment' : 'Scan Equipment'}</Typography>
-          </Box>
-          <Button 
-            variant="contained" 
-            color="success" 
-            size="large"
-            onClick={(e) => setAnchorEl(e.currentTarget)}
-            sx={{ textTransform: 'none', borderRadius: 3, px: 4, fontWeight: 700 }}
-          >
-            Equipment Actions ▾
-          </Button>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)} PaperProps={{ sx: { mt: 1, borderRadius: 2, minWidth: 220, boxShadow: '0 10px 30px rgba(0,0,0,0.1)' } }}>
-            <MenuItem onClick={() => { setAnchorEl(null); setActiveView('add'); }} sx={{ fontWeight: 700, color: '#0b6b57', py: 1.5 }}>+ Add New Equipment</MenuItem>
-            <MenuItem onClick={() => { setAnchorEl(null); setScanForm({ ...scanForm, action: 'scan' }); setActiveView('scan'); }} sx={{ py: 1.5 }}>Scan QR Code</MenuItem>
-            <MenuItem onClick={() => { setAnchorEl(null); setScanForm({ ...scanForm, action: 'dispatch' }); setActiveView('scan'); }} sx={{ py: 1.5 }}>Dispatch to Field</MenuItem>
-            <MenuItem onClick={() => { setAnchorEl(null); setScanForm({ ...scanForm, action: 'confirm' }); setActiveView('scan'); }} sx={{ py: 1.5 }}>Confirm Receipt</MenuItem>
-            <MenuItem onClick={() => { setAnchorEl(null); setScanForm({ ...scanForm, action: 'maintenance' }); setActiveView('scan'); }} sx={{ py: 1.5 }}>Send to Maintenance</MenuItem>
-          </Menu>
-        </Stack>
+      {/* 3. MAIN DASHBOARD CONTENT */}
+      <Container maxWidth="xl" sx={{ pb: 8, mt: -3, position: 'relative', zIndex: 2 }}>
+        
+        {/* TOP ROW */}
+        <Grid container spacing={3} mb={3}>
+          {/* Quick Actions */}
+          <Grid item xs={12} md={4}>
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0', height: '100%' }}>
+              <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={2}>Quick Actions</Typography>
+              <Grid container spacing={2}>
+                {[
+                  { icon: <QrCodeIcon sx={{ color: '#10b981' }}/>, bg: '#d1fae5', label: 'Scan QR Code', sub: 'Issue or return equipment' },
+                  { icon: <DispatchIcon sx={{ color: '#3b82f6' }}/>, bg: '#dbeafe', label: 'Dispatch', sub: 'Send equipment to another unit' },
+                  { icon: <ConfirmIcon sx={{ color: '#8b5cf6' }}/>, bg: '#ede9fe', label: 'Confirm Receipt', sub: 'Confirm received equipment' },
+                  { icon: <MaintenanceIcon sx={{ color: '#f59e0b' }}/>, bg: '#fef3c7', label: 'Maintenance', sub: 'Mark equipment under maintenance' }
+                ].map((action, idx) => (
+                  <Grid item xs={6} key={idx}>
+                    <Box sx={{ p: 2, border: '1px solid #f1f5f9', borderRadius: 2, textAlign: 'center', cursor: 'pointer', '&:hover': { bgcolor: '#f8fafc', borderColor: '#e2e8f0' }, transition: 'all 0.2s' }}>
+                      <Box sx={{ width: 40, height: 40, mx: 'auto', mb: 1.5, borderRadius: 2, bgcolor: action.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {action.icon}
+                      </Box>
+                      <Typography variant="caption" fontWeight={800} color="#0f172a" display="block">{action.label}</Typography>
+                      <Typography variant="caption" color="#64748b" fontSize="0.65rem">{action.sub}</Typography>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
+          </Grid>
 
-        {activeView === 'inventory' && (
-          <Grid container spacing={3}>
-            <Grid item xs={12} lg={8}>
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-                <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Equipment List</Typography>
+          {/* Scan QR Code Center */}
+          <Grid item xs={12} md={4}>
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0', height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={1}>Scan QR Code</Typography>
+              <Typography variant="caption" color="#64748b" mb={4}>Scan the QR code on equipment to view details and update status.</Typography>
+              
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #cbd5e1', borderRadius: 2, bgcolor: '#f8fafc', p: 3 }}>
+                <QrCodeIcon sx={{ fontSize: 64, color: '#10b981', mb: 2 }} />
+                <Button variant="contained" sx={{ bgcolor: '#0f4a30', color: '#fff', fontWeight: 700, px: 4, mb: 1, '&:hover': { bgcolor: '#0a3622' } }}>
+                  Start Scanning
+                </Button>
+                <Typography variant="caption" color="#64748b">or <span style={{ fontWeight: 700, cursor: 'pointer', color: '#0f172a' }}>Enter Equipment ID</span></Typography>
+              </Box>
+            </Paper>
+          </Grid>
+
+          {/* Recent Activity */}
+          <Grid item xs={12} md={4}>
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0', height: '100%' }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+                <Typography variant="subtitle2" fontWeight={800} color="#0f172a">Recent Activity</Typography>
+                <Typography variant="caption" fontWeight={700} color="#0f4a30" sx={{ cursor: 'pointer' }}>View All</Typography>
+              </Stack>
+              {RECENT_ACTIVITY.length === 0 ? (
+                <Typography variant="body2" color="#64748b" textAlign="center" py={4}>No recent activity</Typography>
+              ) : (
+                <Stack spacing={3}>
+                  {RECENT_ACTIVITY.map((activity, idx) => (
+                    <Box key={idx} sx={{ display: 'flex', gap: 2 }}>
+                      <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: activity.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {activity.icon}
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="caption" fontWeight={700} color="#0f172a" display="block">{activity.text}</Typography>
+                        <Typography variant="caption" color="#64748b">{activity.subtext}</Typography>
+                      </Box>
+                      <Typography variant="caption" fontWeight={600} color="#64748b">{activity.time}</Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* BOTTOM ROW */}
+        <Grid container spacing={3}>
+          {/* Equipment List (Left 8 cols) */}
+          <Grid item xs={12} lg={8}>
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+                <Typography variant="subtitle2" fontWeight={800} color="#0f172a">Equipment List</Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setAddOpen(true)}
+                  sx={{ bgcolor: '#0f4a30', color: '#fff', fontWeight: 700, borderRadius: 2, '&:hover': { bgcolor: '#0a3622' } }}
+                >
+                  Add Equipment
+                </Button>
+              </Stack>
+
+              <Grid container spacing={2} mb={3}>
+                <Grid item xs={12} md={8}>
+                  <TextField 
+                    fullWidth 
+                    size="small" 
+                    placeholder="Search equipment by ID, Name, or Category..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} 
+                  />
+                </Grid>
+              </Grid>
+
+              {equipment.length === 0 ? (
+                <Box textAlign="center" py={6}>
+                  <BoxIcon sx={{ fontSize: 48, color: '#cbd5e1', mb: 2 }} />
+                  <Typography variant="subtitle2" fontWeight={700} color="#0f172a" mb={1}>No Equipment Yet</Typography>
+                  <Typography variant="body2" color="#64748b" mb={3}>Click "Add Equipment" to register your first item.</Typography>
+                  <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setAddOpen(true)} sx={{ color: '#0f4a30', borderColor: '#0f4a30', fontWeight: 700 }}>Add Equipment</Button>
+                </Box>
+              ) : (
                 <TableContainer>
-                  <Table>
+                  <Table sx={{ '& .MuiTableCell-root': { borderBottom: '1px solid #f1f5f9', py: 1.5 } }}>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Equipment ID</TableCell>
-                        <TableCell>Name</TableCell>
-                        <TableCell>Category</TableCell>
-                        <TableCell>Location</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Last Updated</TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={800} color="#64748b">Equipment ID</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={800} color="#64748b">Name</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={800} color="#64748b">Category</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={800} color="#64748b">Location</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={800} color="#64748b">Status</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={800} color="#64748b">Last Updated</Typography></TableCell>
+                        <TableCell><Typography variant="caption" fontWeight={800} color="#64748b">Action</Typography></TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {equipmentRows.map((row, idx) => (
-                        <TableRow key={row.id || idx} hover>
-                          <TableCell>{row.qr_code || `EQ-${row.id}`}</TableCell>
-                          <TableCell>{row.name || 'Unknown Item'}</TableCell>
-                          <TableCell>{row.type || row.category || 'General'}</TableCell>
-                          <TableCell>{row.lat ? `Lat: ${row.lat.toFixed(3)}` : 'HQ Store'}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={row.status || 'Available'}
-                              size="small"
-                              color={getStatusColor(row.status || 'Available')}
-                              sx={{ textTransform: 'capitalize', fontWeight: 600 }}
-                            />
-                          </TableCell>
-                          <TableCell>{new Date(row.last_scanned_at || row.updated_at || Date.now()).toLocaleDateString()}</TableCell>
-                        </TableRow>
-                      ))}
+                      {equipment.filter(e => (e.id || '').toLowerCase().includes(searchQuery.toLowerCase()) || (e.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (e.category || '').toLowerCase().includes(searchQuery.toLowerCase())).map((row, idx) => {
+                        const styles = getStatusStyles(row.status);
+                        return (
+                          <TableRow key={idx} hover>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <Avatar variant="rounded" sx={{ width: 32, height: 32, bgcolor: '#f1f5f9', color: '#64748b' }}>
+                                  <BoxIcon fontSize="small" />
+                                </Avatar>
+                                <Typography variant="body2" fontWeight={700} color="#0f172a">{row.id}</Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell><Typography variant="body2" fontWeight={600} color="#475569">{row.name}</Typography></TableCell>
+                            <TableCell><Typography variant="body2" color="#64748b">{row.category}</Typography></TableCell>
+                            <TableCell><Typography variant="body2" color="#64748b">{row.location}</Typography></TableCell>
+                            <TableCell>
+                              <Chip label={row.status} size="small" sx={{ bgcolor: styles.bg, color: styles.color, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
+                            </TableCell>
+                            <TableCell><Typography variant="caption" color="#64748b">{row.date}</Typography></TableCell>
+                            <TableCell>
+                              <IconButton size="small" sx={{ color: '#64748b' }}><ViewIcon fontSize="small" /></IconButton>
+                              <IconButton size="small" sx={{ color: '#64748b' }}><MoreIcon fontSize="small" /></IconButton>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </TableContainer>
-              </Paper>
-            </Grid>
-
-            <Grid item xs={12} lg={4}>
-              <Stack spacing={3}>
-                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                    <Typography variant="h6" fontWeight={800}>Recent Activity</Typography>
-                    <Button size="small" sx={{ textTransform: 'none' }}>View All</Button>
-                  </Stack>
-                  <Stack spacing={2}>
-                    {dynamicRecentActivity.length > 0 ? dynamicRecentActivity.map((item) => (
-                      <Paper key={item.title} sx={{ p: 2, borderRadius: 3, bgcolor: '#f8fafc' }}>
-                        <Typography fontWeight={700}>{item.title}</Typography>
-                        <Typography variant="caption" color="text.secondary">{item.user} · {item.time}</Typography>
-                      </Paper>
-                    )) : (
-                      <Typography variant="body2" color="text.secondary">No recent activity.</Typography>
-                    )}
-                  </Stack>
-                </Paper>
-
-                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-                  <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Equipment by Category</Typography>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}> 
-                    {categoryStats.length > 0 ? categoryStats.map((item) => (
-                      <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1, borderRadius: 2, bgcolor: '#f8fafc' }}>
-                        <Avatar sx={{ bgcolor: item.color, width: 10, height: 10 }} />
-                        <Box>
-                          <Typography variant="body2">{item.label}</Typography>
-                          <Typography variant="caption" color="text.secondary">{item.value}</Typography>
-                        </Box>
-                      </Box>
-                    )) : (
-                      <Typography variant="body2" color="text.secondary" sx={{ gridColumn: 'span 2' }}>No categories available.</Typography>
-                    )}
-                  </Box>
-                </Paper>
-
-                <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                    <Typography variant="h6" fontWeight={800}>Low Stock / Maintenance Alerts</Typography>
-                    <Button size="small" sx={{ textTransform: 'none' }}>View Details</Button>
-                  </Stack>
-                  <Stack spacing={1}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography>{equipmentRows.filter(e => (e.status || '').toLowerCase() === 'maintenance').length} items under maintenance</Typography>
-                      <Typography fontWeight={700}>View</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography>{equipmentRows.filter(e => e.quantity && e.quantity <= 2).length} items low in stock</Typography>
-                      <Typography fontWeight={700}>View</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography>0 items require calibration</Typography>
-                      <Typography fontWeight={700}>View</Typography>
-                    </Box>
-                  </Stack>
-                </Paper>
-              </Stack>
-            </Grid>
+              )}
+              
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 3 }}>
+                <Typography variant="caption" color="#64748b">Showing {equipment.filter(e => (e.id || '').toLowerCase().includes(searchQuery.toLowerCase()) || (e.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (e.category || '').toLowerCase().includes(searchQuery.toLowerCase())).length} of {equipment.length} total items</Typography>
+              </Box>
+            </Paper>
           </Grid>
-        )}
 
-        {activeView === 'add' && (
-          <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)', maxWidth: 600, mx: 'auto' }}>
-            <Typography variant="h5" fontWeight={800} sx={{ mb: 3 }}>Equipment Details</Typography>
+          {/* Right Column (4 cols) */}
+          <Grid item xs={12} lg={4}>
             <Stack spacing={3}>
-          <Autocomplete
-            freeSolo
-            options={predefinedEquipmentNames}
-            value={form.name}
-            onInputChange={(event, newValue) => {
-              const updatedForm = { ...form, name: newValue || '' };
-              // Auto-select the category if the equipment matches a predefined one
-              if (equipmentCategoryMap[newValue]) {
-                updatedForm.type = equipmentCategoryMap[newValue];
-              }
-              setForm(updatedForm);
-            }}
-            renderInput={(params) => <TextField {...params} label="Equipment Name" fullWidth />}
-          />
-              <Autocomplete
-                freeSolo
-                options={predefinedCategories}
-                value={form.type}
-                onInputChange={(event, newValue) => setForm({...form, type: newValue || ''})}
-                renderInput={(params) => <TextField {...params} label="Category/Type" fullWidth helperText="e.g. Rescue Gear, Medical Equipment" />}
-              />
-              <TextField label="Location" fullWidth value={form.location} onChange={e => setForm({...form, location: e.target.value})} />
-              <Autocomplete
-                freeSolo
-                options={predefinedStatuses}
-                value={form.status}
-                onInputChange={(event, newValue) => setForm({...form, status: newValue || ''})}
-                renderInput={(params) => <TextField {...params} label="Status" fullWidth />}
-              />
-              <TextField label="Quantity" type="number" fullWidth value={form.quantity} onChange={e => setForm({...form, quantity: Number(e.target.value)})} />
-              <Box sx={{ display: 'flex', gap: 2, pt: 2 }}>
-                <Button onClick={() => setActiveView('inventory')} color="inherit" variant="outlined" sx={{ flex: 1, py: 1.5, fontWeight: 700 }}>Cancel</Button>
-                <Button onClick={handleAddEquipment} variant="contained" color="success" sx={{ flex: 1, py: 1.5, fontWeight: 700 }}>Save Equipment</Button>
-              </Box>
-            </Stack>
-          </Paper>
-        )}
+              
+              {/* Equipment by Category */}
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+                  <Typography variant="subtitle2" fontWeight={800} color="#0f172a">Equipment by Category</Typography>
+                  <Typography variant="caption" fontWeight={700} color="#0f4a30" sx={{ cursor: 'pointer' }}>View Report</Typography>
+                </Stack>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={5}>
+                    {/* CSS Donut Chart */}
+                    <Box sx={{ 
+                      position: 'relative', width: '100%', pb: '100%', borderRadius: '50%', 
+                      background: 'conic-gradient(#10b981 0% 34%, #3b82f6 34% 58%, #8b5cf6 58% 74%, #f59e0b 74% 86%, #94a3b8 86% 100%)' 
+                    }}>
+                      <Box sx={{ position: 'absolute', top: '25%', left: '25%', right: '25%', bottom: '25%', bgcolor: '#fff', borderRadius: '50%' }} />
+                    </Box>
+                  </Grid>
+                  <Grid item xs={7}>
+                    <Stack spacing={1.5}>
+                      {CATEGORY_STATS.map((stat, idx) => (
+                        <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: stat.color }} />
+                            <Typography variant="caption" fontWeight={600} color="#475569">{stat.label}</Typography>
+                          </Box>
+                          <Typography variant="caption" fontWeight={700} color="#0f172a">{stat.value} <span style={{ color: '#94a3b8', fontWeight: 600 }}>({stat.percent})</span></Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Grid>
+                </Grid>
+              </Paper>
 
-        {activeView === 'scan' && (
-          <Paper sx={{ p: { xs: 3, md: 5 }, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)', maxWidth: 600, mx: 'auto' }}>
-            <Typography variant="h5" fontWeight={800} sx={{ mb: 1 }}>Equipment Scanner</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>Select an action and scan the QR code to update the equipment status.</Typography>
-            
-            <Stack spacing={4}>
-              <Box sx={{ textAlign: 'center', p: 4, border: '2px dashed #cbd5e1', borderRadius: 3, bgcolor: '#f8fafc' }}>
-                <QrCodeScannerRoundedIcon sx={{ fontSize: 80, color: '#94a3b8', mb: 2 }} />
-                <Typography variant="body1" fontWeight={700} color="text.secondary">
-                  Point your camera at the QR code, or manually enter the Equipment ID below.
+              {/* Low Stock / Alerts */}
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+                  <Typography variant="subtitle2" fontWeight={800} color="#0f172a">Low Stock / Maintenance Alerts</Typography>
+                  <Typography variant="caption" fontWeight={700} color="#0f4a30" sx={{ cursor: 'pointer' }}>View All</Typography>
+                </Stack>
+                <Typography variant="body2" color="#64748b" textAlign="center" py={4}>
+                  No maintenance alerts at this time.
                 </Typography>
-              </Box>
-              
-              <TextField 
-                label="Equipment QR ID" 
-                fullWidth 
-                value={scanForm.qr_code} 
-                onChange={e => setScanForm({...scanForm, qr_code: e.target.value})} 
-                placeholder="e.g. EQ-1001"
-              />
-              
-              <TextField
-                select
-                label="Action to Perform"
-                fullWidth
-                SelectProps={{ native: true }}
-                value={scanForm.action}
-                onChange={e => setScanForm({...scanForm, action: e.target.value})}
-              >
-                <option value="scan">Log Location (Routine Scan)</option>
-                <option value="dispatch">Dispatch to Field</option>
-                <option value="confirm">Confirm Receipt</option>
-                <option value="maintenance">Send to Maintenance</option>
-              </TextField>
-              
-              <Box sx={{ display: 'flex', gap: 2, pt: 2 }}>
-                <Button onClick={() => setActiveView('inventory')} color="inherit" variant="outlined" sx={{ flex: 1, py: 1.5, fontWeight: 700 }}>Cancel</Button>
-                <Button onClick={handleScanSubmit} variant="contained" color="success" sx={{ flex: 1, py: 1.5, fontWeight: 700 }}>Submit Scan</Button>
-              </Box>
+              </Paper>
+
             </Stack>
-          </Paper>
-        )}
+          </Grid>
+        </Grid>
       </Container>
+
+      {/* ── Add Equipment Dialog ── */}
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#0f172a', pb: 1 }}>
+          Add New Equipment
+        </DialogTitle>
+        <DialogContent dividers>
+          {success ? (
+            <Box textAlign="center" py={4}>
+              <SuccessIcon sx={{ fontSize: 56, color: '#10b981', mb: 2 }} />
+              <Typography variant="h6" fontWeight={800} color="#0f172a">Equipment Added!</Typography>
+              <Typography variant="body2" color="#64748b">It now appears in the equipment list.</Typography>
+            </Box>
+          ) : (
+            <Stack spacing={3} pt={1}>
+              <TextField
+                label="QR Code / Equipment ID *"
+                placeholder="e.g. EQ-1001"
+                value={form.qr_code}
+                onChange={e => setForm({ ...form, qr_code: e.target.value })}
+                fullWidth
+                size="small"
+                helperText="Unique identifier printed on the equipment tag"
+              />
+              <TextField
+                label="Equipment Name *"
+                placeholder="e.g. Rescue Rope 50m"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                fullWidth
+                size="small"
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Category</InputLabel>
+                <Select label="Category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                  {['Rescue Gear', 'Medical Equipment', 'Communication', 'Power Equipment', 'Transport', 'Relief Supplies', 'Other'].map(c => (
+                    <MenuItem key={c} value={c}>{c}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                label="Location / Store"
+                placeholder="e.g. Shimla HQ Store"
+                value={form.location}
+                onChange={e => setForm({ ...form, location: e.target.value })}
+                fullWidth
+                size="small"
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select label="Status" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                  <MenuItem value="available">✅ Available</MenuItem>
+                  <MenuItem value="in use">🔵 In Use</MenuItem>
+                  <MenuItem value="in transit">🟣 In Transit</MenuItem>
+                  <MenuItem value="maintenance">🟠 Maintenance</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+          )}
+        </DialogContent>
+        {!success && (
+          <DialogActions sx={{ px: 3, py: 2, gap: 1 }}>
+            <Button onClick={() => setAddOpen(false)} sx={{ color: '#64748b', fontWeight: 700 }}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={handleAddSubmit}
+              disabled={submitting}
+              startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
+              sx={{ bgcolor: '#0f4a30', color: '#fff', fontWeight: 700, borderRadius: 2, px: 3, '&:hover': { bgcolor: '#0a3622' } }}
+            >
+              {submitting ? 'Saving...' : 'Add Equipment'}
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
+
     </Box>
   );
 }

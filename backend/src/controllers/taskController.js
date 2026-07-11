@@ -1,8 +1,10 @@
 const taskBoardService = require("../services/taskBoardService");
+const filterByOffice = require("../utils/officeFilter");
 
-function listTasks(_req, res) {
+function listTasks(req, res) {
   // Returns task board cards grouped client-side by status.
-  return res.json(taskBoardService.listTasks());
+  const tasks = taskBoardService.listTasks();
+  return res.json(filterByOffice(tasks, req.user));
 }
 
 function createTask(req, res) {
@@ -13,7 +15,8 @@ function createTask(req, res) {
     assignedAgency: req.body.assignedAgency,
     notificationAgencies: req.body.notificationAgencies,
     status: req.body.status,
-    createdBy: req.user.id
+    createdBy: req.user.id,
+    officeTags: req.body.officeTags
   });
   return res.status(201).json({
     id: result.lastInsertRowid,

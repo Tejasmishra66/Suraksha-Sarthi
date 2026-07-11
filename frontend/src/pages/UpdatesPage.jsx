@@ -1,338 +1,245 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Avatar,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Checkbox,
-  Container,
-  Divider,
-  FormControl,
-  FormControlLabel,
-  FormGroup,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Select,
-  Stack,
-  TextField,
-  Typography,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Box, Container, Grid, Paper, Stack, Typography, Chip, Button, 
+  Select, MenuItem, Tabs, Tab, TextField, InputAdornment, Avatar,
+  Checkbox, FormGroup, FormControlLabel, Pagination
 } from '@mui/material';
-import TopNavBar from '../components/TopNavBar';
-import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded';
-import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
-import RouteRoundedIcon from '@mui/icons-material/RouteRounded';
-import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded';
-import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
-import GppGoodRoundedIcon from '@mui/icons-material/GppGoodRounded';
-import PublicRoundedIcon from '@mui/icons-material/PublicRounded';
-import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded';
-import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import { fetchBulletins, fetchAlerts, createBulletin } from '../api/client';
+import {
+  VerifiedRounded as VerifiedIcon,
+  SearchRounded as SearchIcon,
+  FilterListRounded as FilterIcon,
+  WarningRounded as WarningIcon,
+  RouteRounded as RoadIcon,
+  GroupsRounded as GroupsIcon,
+  LocalHospitalRounded as MedicalIcon,
+  CampaignRounded as CampaignIcon,
+  GppGoodRounded as SecureIcon,
+  NotificationsActiveRounded as BellIcon,
+  DomainRounded as DeptIcon,
+  InfoRounded as InfoIcon,
+  CheckCircleOutlineRounded as CheckIcon,
+  MedicalServicesRounded as BagIcon,
+  SyncRounded as SyncIcon
+} from '@mui/icons-material';
+import { fetchBulletins } from '../api/client';
 
-const categoryOptions = [
-  'All Categories',
+const CATEGORIES = [
   'Weather Alerts',
   'Road & Transport',
   'Health Advisory',
   'Rescue Operations',
   'Training & Drills',
   'General Information',
-  'Connectivity',
-  'Utility Status',
-  'Others',
+  'Others'
 ];
-const dateRanges = ['Any Date', 'Last 24 Hours', 'Last 7 Days', 'Last 30 Days'];
 
 const getCategoryStyles = (category) => {
-  switch(category) {
-    case 'Weather Alerts': return { color: '#ef4444', icon: WarningAmberRoundedIcon };
-    case 'Road & Transport': return { color: '#f59e0b', icon: RouteRoundedIcon };
-    case 'Rescue Operations': return { color: '#10b981', icon: GppGoodRoundedIcon };
-    case 'Health Advisory': return { color: '#2563eb', icon: LocalHospitalRoundedIcon };
-    case 'Training & Drills': return { color: '#8b5cf6', icon: SaveRoundedIcon };
-    case 'Connectivity': return { color: '#14b8a6', icon: PublicRoundedIcon };
-    case 'Utility Status': return { color: '#f97316', icon: RouteRoundedIcon };
-    default: return { color: '#64748b', icon: PublicRoundedIcon };
-  }
+  const cat = category?.toLowerCase() || '';
+  if (cat.includes('weather')) return { color: '#ef4444', bg: '#fef2f2', icon: <WarningIcon sx={{ color: '#ef4444' }} /> };
+  if (cat.includes('road') || cat.includes('transport')) return { color: '#f59e0b', bg: '#fffbeb', icon: <RoadIcon sx={{ color: '#f59e0b' }} /> };
+  if (cat.includes('rescue')) return { color: '#10b981', bg: '#f0fdf4', icon: <GroupsIcon sx={{ color: '#10b981' }} /> };
+  if (cat.includes('health') || cat.includes('medical')) return { color: '#8b5cf6', bg: '#f3e8ff', icon: <BagIcon sx={{ color: '#8b5cf6' }} /> };
+  return { color: '#3b82f6', bg: '#eff6ff', icon: <InfoIcon sx={{ color: '#3b82f6' }} /> };
 };
-
-const getSeverityColor = (severity) => {
-  const s = severity?.toLowerCase();
-  if (s === 'high' || s === 'critical') return '#ef4444'; // Red
-  if (s === 'medium') return '#f59e0b'; // Orange
-  return '#3b82f6'; // Blue
-};
-
-const initialDepartments = [
-  { id: 1, label: 'SDRF Himachal Pradesh', followed: true },
-  { id: 2, label: 'India Meteorological Department', followed: false },
-  { id: 3, label: 'Public Works Department', followed: false },
-  { id: 4, label: 'Health Department', followed: false },
-  { id: 5, label: 'Disaster Management Dept.', followed: false },
-];
 
 export default function UpdatesPage() {
-  const [category, setCategory] = useState('All Categories');
-  const [dateRange, setDateRange] = useState('Any Date');
-  const [selectedCategories, setSelectedCategories] = useState({
-    'Weather Alerts': true,
-    'Road & Transport': true,
-    'Health Advisory': true,
-    'Rescue Operations': true,
-    'Training & Drills': true,
-    'General Information': true,
-    'Connectivity': true,
-    'Utility Status': true,
-    Others: true,
-  });
-
-  const [departmentsList, setDepartmentsList] = useState(initialDepartments);
-  const [bulletins, setBulletins] = useState([]);
-  const [alerts, setAlerts] = useState([]);
-  const [openBulletinDialog, setOpenBulletinDialog] = useState(false);
-  const [newBulletin, setNewBulletin] = useState({ category: 'General Information', message: '' });
+  const [feedData, setFeedData] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState(CATEGORIES);
+  
+  const handleCategoryToggle = (cat) => {
+    if (selectedCategories.includes(cat)) {
+      setSelectedCategories(selectedCategories.filter(c => c !== cat));
+    } else {
+      setSelectedCategories([...selectedCategories, cat]);
+    }
+  };
 
   useEffect(() => {
-    loadData();
+    fetchBulletins()
+      .then(data => {
+        if (data && data.length > 0) {
+          setFeedData(data.map(b => ({
+            id: b.id,
+            title: b.category,
+            dept: b.author_agency || b.author_name || 'Official Department',
+            desc: b.message,
+            date: new Date(b.timestamp).toLocaleString(),
+            tag: b.category,
+            ...getCategoryStyles(b.category)
+          })));
+        }
+        // No fallback mock data
+      })
+      .catch(e => console.error(e));
   }, []);
 
-  async function loadData() {
-    try {
-      setBulletins((await fetchBulletins()) || []);
-      setAlerts((await fetchAlerts()) || []);
-    } catch (err) {
-      console.error("Failed to load updates page data", err);
-    }
-  }
-
-  const handlePostBulletin = async () => {
-    if (!newBulletin.message) return;
-    try {
-      await createBulletin({ category: newBulletin.category, message: newBulletin.message });
-      setOpenBulletinDialog(false);
-      setNewBulletin({ category: 'General Information', message: '' });
-      loadData(); // Refresh the feed
-    } catch(err) {
-      console.error("Failed to post bulletin", err);
-      alert("Failed to post bulletin.");
-    }
-  };
-
-  const handleResetFilters = () => {
-    setCategory('All Categories');
-    setDateRange('Any Date');
-    setSelectedCategories({
-      'Weather Alerts': true,
-      'Road & Transport': true,
-      'Health Advisory': true,
-      'Rescue Operations': true,
-      'Training & Drills': true,
-      'General Information': true,
-      'Connectivity': true,
-      'Utility Status': true,
-      Others: true,
-    });
-  };
-
-  const toggleFollow = (id) => {
-    setDepartmentsList((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, followed: !d.followed } : d))
-    );
-  };
-
-  const filteredUpdates = useMemo(() => {
-    return bulletins.filter((item) => {
-      if (category !== 'All Categories' && item.category !== category) {
-        return false;
-      }
-      if (!selectedCategories[item.category] && item.category in selectedCategories) {
-        return false;
-      }
-      if (dateRange !== 'Any Date') {
-        const itemDate = new Date(item.created_at || Date.now());
-        const now = new Date();
-        const diffTime = Math.abs(now - itemDate);
-        const diffHours = diffTime / (1000 * 60 * 60);
-        const diffDays = diffTime / (1000 * 60 * 60 * 24);
-        if (dateRange === 'Last 24 Hours' && diffHours > 24) return false;
-        if (dateRange === 'Last 7 Days' && diffDays > 7) return false;
-        if (dateRange === 'Last 30 Days' && diffDays > 30) return false;
-      }
-      return true;
-    });
-  }, [bulletins, category, selectedCategories, dateRange]);
-
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f4faf4' }}>
-      <TopNavBar />
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f4f6f8', fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* 1. HERO SECTION */}
+      <Box sx={{ 
+        position: 'relative',
+        height: 450,
+        backgroundImage: 'url(/mountain-updates.jpg)', // Mountain background
+        backgroundSize: 'cover',
+        backgroundPosition: 'top',
+        pt: 8, pb: 4, px: { xs: 2, md: 6 }
+      }}>
+        {/* Filter removed as requested */}
+        
+        {/* Hero text removed as requested */}
+      </Box>
 
-      <Container maxWidth="xl" sx={{ py: { xs: 4, md: 6 } }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
-          <Typography variant="h4" fontWeight={900} color="#102f25">Updates & Announcements</Typography>
-          <Button variant="contained" color="primary" onClick={() => setOpenBulletinDialog(true)} sx={{ textTransform: 'none', borderRadius: 3, px: 4, fontWeight: 700 }}>
-            Post Official Update
-          </Button>
-        </Stack>
+      {/* 2. TAB NAVIGATION BAR (Now just Search) */}
+      <Container maxWidth="xl" sx={{ mt: -3, position: 'relative', zIndex: 2, mb: 4 }}>
+        <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: '#fff', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', p: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField 
+              size="small" 
+              placeholder="Search updates..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} 
+              sx={{ width: 250, bgcolor: '#f8fafc' }}
+            />
+          </Box>
+        </Paper>
+      </Container>
 
+      {/* 3. MAIN DASHBOARD CONTENT */}
+      <Container maxWidth="xl" sx={{ pb: 8 }}>
         <Grid container spacing={3}>
-          <Grid item xs={12} lg={3}>
-            <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Filter Updates</Typography>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Category</InputLabel>
-                <Select value={category} label="Category" onChange={(e) => setCategory(e.target.value)}>
-                  {categoryOptions.map((option) => (
-                    <MenuItem key={option} value={option}>{option}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Categories</Typography>
-              <FormGroup>
-                {categoryOptions.slice(1).map((option) => (
-                  <FormControlLabel
-                    key={option}
+          
+          {/* LEFT COLUMN: Filters */}
+          <Grid item xs={12} md={3}>
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+              <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={3}>Filter Categories</Typography>
+              
+              <FormGroup sx={{ mb: 4 }}>
+                {CATEGORIES.map((cat, idx) => (
+                  <FormControlLabel 
+                    key={idx} 
                     control={
-                      <Checkbox
-                        checked={selectedCategories[option]}
-                        onChange={(e) => setSelectedCategories((current) => ({ ...current, [option]: e.target.checked }))}
+                      <Checkbox 
+                        checked={selectedCategories.includes(cat)}
+                        onChange={() => handleCategoryToggle(cat)}
+                        size="small" 
+                        sx={{ color: '#cbd5e1', '&.Mui-checked': { color: '#0f4a30' } }} 
                       />
-                    }
-                    label={option}
+                    } 
+                    label={<Typography variant="body2" fontWeight={600} color="#475569">{cat}</Typography>} 
+                    sx={{ mb: -0.5 }}
                   />
                 ))}
               </FormGroup>
-              <FormControl fullWidth sx={{ mt: 2, mb: 2 }}>
-                <InputLabel>Date Range</InputLabel>
-                <Select value={dateRange} label="Date Range" onChange={(e) => setDateRange(e.target.value)}>
-                  {dateRanges.map((option) => (
-                    <MenuItem key={option} value={option}>{option}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Button variant="outlined" fullWidth onClick={handleResetFilters}>
+
+              <Button fullWidth variant="outlined" startIcon={<SyncIcon />} onClick={() => setSelectedCategories(CATEGORIES)} sx={{ color: '#0f4a30', borderColor: '#cbd5e1', fontWeight: 700 }}>
                 Reset Filters
               </Button>
             </Paper>
           </Grid>
 
-          <Grid item xs={12} lg={6}>
-            <Stack spacing={3}>
-              {filteredUpdates.length === 0 ? (
-                <Typography sx={{ p: 3, textAlign: 'center' }} color="text.secondary">No updates found for the selected filters.</Typography>
-              ) : filteredUpdates.map((item) => {
-                const style = getCategoryStyles(item.category);
-                const Icon = style.icon;
-                return (
-                  <Paper key={item.id} sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.06)' }}>
-                    <Stack direction="row" spacing={2} alignItems="flex-start">
-                      <Avatar sx={{ bgcolor: style.color, width: 52, height: 52 }}>
-                        <Icon sx={{ color: '#fff' }} />
-                      </Avatar>
-                      <Box sx={{ flex: 1 }}>
-                        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2}>
-                          <Typography variant="h6" fontWeight={800} sx={{ mb: { xs: 1, sm: 0 } }}>{item.category} Update</Typography>
-                          <Button size="small" variant="outlined" sx={{ textTransform: 'none', borderColor: style.color, color: style.color }}>{item.category}</Button>
-                        </Stack>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2 }}>{item.message}</Typography>
-                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                          <Typography variant="caption" color="text.secondary">By Officer ID: {item.author_id || 'System'}</Typography>
-                          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-                          <Typography variant="caption" color="text.secondary">{new Date(item.created_at || Date.now()).toLocaleString()}</Typography>
-                        </Stack>
+          {/* CENTER COLUMN: Updates Feed */}
+          <Grid item xs={12} md={6}>
+            <Stack spacing={2}>
+              {feedData.filter(item => 
+                ((item.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || (item.desc || '').toLowerCase().includes(searchQuery.toLowerCase())) &&
+                selectedCategories.includes(item.tag)
+              ).length === 0 ? (
+                <Paper elevation={0} sx={{ p: 6, borderRadius: 3, border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                  <Typography variant="subtitle1" fontWeight={700} color="#0f172a" mb={1}>No Updates Yet</Typography>
+                  <Typography variant="body2" color="#64748b">Official bulletins and alerts will appear here once posted by your department.</Typography>
+                </Paper>
+              ) : feedData.filter(item => 
+                ((item.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || (item.desc || '').toLowerCase().includes(searchQuery.toLowerCase())) &&
+                selectedCategories.includes(item.tag)
+              ).map((item) => (
+                <Paper key={item.id} elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0', transition: 'all 0.2s', '&:hover': { borderColor: '#cbd5e1', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)' } }}>
+                  <Grid container spacing={3} wrap="nowrap">
+                    <Grid item>
+                      <Box sx={{ width: 64, height: 64, borderRadius: 2, bgcolor: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {React.cloneElement(item.icon, { sx: { fontSize: 32, color: item.color } })}
                       </Box>
-                    </Stack>
-                  </Paper>
-                );
-              })}
+                    </Grid>
+                    <Grid item xs>
+                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={0.5}>{item.title}</Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Typography variant="caption" fontWeight={700} color="#475569">{item.dept}</Typography>
+                            <VerifiedIcon sx={{ fontSize: 14, color: '#10b981' }} />
+                          </Box>
+                        </Box>
+                        <Stack alignItems="flex-end">
+                          <Typography variant="caption" color="#64748b" mb={1}>{item.date}</Typography>
+                          <Chip label={item.tag} size="small" sx={{ bgcolor: item.bg, color: item.color, fontWeight: 700, fontSize: '0.7rem', height: 22 }} />
+                        </Stack>
+                      </Stack>
+                      <Typography variant="body2" color="#64748b" lineHeight={1.6}>{item.desc}</Typography>
+                    </Grid>
+                  </Grid>
+                </Paper>
+              ))}
+
             </Stack>
           </Grid>
 
-          <Grid item xs={12} lg={3}>
+          {/* RIGHT COLUMN: Alerts & Following */}
+          <Grid item xs={12} md={3}>
             <Stack spacing={3}>
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight={800}>Latest Alerts</Typography>
+              
+              {/* Latest Alerts */}
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+                  <Typography variant="subtitle2" fontWeight={800} color="#0f172a">Latest Alerts</Typography>
+                  <Typography variant="caption" fontWeight={700} color="#0f4a30" sx={{ cursor: 'pointer' }}>View All</Typography>
                 </Stack>
-                <Stack spacing={2}>
-                  {alerts.slice(0, 5).map((item) => (
-                    <Paper key={item.id} variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: '#e2e8f0' }}>
-                      <Typography fontWeight={800}>{item.disaster_type || item.disasterType} Alert</Typography>
-                      <Typography variant="body2" color="text.secondary">Coordinates: {item.lat}, {item.lng}</Typography>
-                      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1 }}>
-                        <Typography variant="caption" color="text.secondary">{new Date(item.created_at || Date.now()).toLocaleDateString()}</Typography>
-                        <Box sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: getSeverityColor(item.severity), color: '#fff', fontSize: 12, textTransform: 'capitalize' }}>{item.severity || 'Medium'}</Box>
-                      </Stack>
-                    </Paper>
-                  ))}
-                  {alerts.length === 0 && <Typography variant="body2" color="text.secondary">No active alerts.</Typography>}
-                </Stack>
+                
+              <Stack spacing={2}>
+                <Typography variant="body2" color="#64748b" textAlign="center" py={4}>
+                  No active alerts at the moment.
+                </Typography>
+              </Stack>
               </Paper>
 
-              <Paper sx={{ p: 3, borderRadius: 4, boxShadow: '0 18px 30px rgba(15,23,42,0.08)' }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                  <Typography variant="h6" fontWeight={800}>Follow Departments</Typography>
-                </Stack>
-                <Stack spacing={1}>
-                  {departmentsList.map((dept) => (
-                    <Stack key={dept.id} direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f8fafc' }}>
-                      <Typography variant="body2">{dept.label}</Typography>
+              {/* Follow Departments */}
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0' }}>
+                <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={1}>Follow Departments</Typography>
+                <Typography variant="caption" color="#64748b" mb={3} display="block">Get updates from specific departments</Typography>
+                
+                <Stack spacing={2}>
+                  {[
+                    { name: 'SDRF Himachal Pradesh', followed: true },
+                    { name: 'India Meteorological Department', followed: false },
+                    { name: 'Public Works Department', followed: false },
+                    { name: 'Health Department', followed: false },
+                    { name: 'Disaster Management Dept.', followed: false }
+                  ].map((dept, idx) => (
+                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Avatar sx={{ width: 24, height: 24, bgcolor: '#f1f5f9', color: '#0f172a', fontSize: '0.75rem' }}>{dept.name.charAt(0)}</Avatar>
+                        <Typography variant="caption" fontWeight={700} color="#0f172a">{dept.name}</Typography>
+                      </Box>
                       <Button 
                         size="small" 
-                        onClick={() => toggleFollow(dept.id)}
-                        variant={dept.followed ? 'contained' : 'outlined'} 
-                        color={dept.followed ? 'success' : 'inherit'} 
-                        sx={{ textTransform: 'none' }}
+                        variant={dept.followed ? "contained" : "outlined"}
+                        sx={{ 
+                          height: 24, fontSize: '0.65rem', fontWeight: 700, px: 2,
+                          ...(dept.followed ? { bgcolor: '#0f4a30', color: '#fff', '&:hover': { bgcolor: '#0a3622' } } : { color: '#475569', borderColor: '#cbd5e1' })
+                        }}
                       >
                         {dept.followed ? 'Following' : 'Follow'}
                       </Button>
-                    </Stack>
+                    </Box>
                   ))}
                 </Stack>
               </Paper>
+
             </Stack>
           </Grid>
         </Grid>
       </Container>
-
-      <Dialog open={openBulletinDialog} onClose={() => setOpenBulletinDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={800}>Post Official Update</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <FormControl fullWidth>
-              <InputLabel>Category</InputLabel>
-              <Select 
-                value={newBulletin.category} 
-                label="Category" 
-                onChange={(e) => setNewBulletin({...newBulletin, category: e.target.value})}
-              >
-                {categoryOptions.slice(1).map((option) => (
-                  <MenuItem key={option} value={option}>{option}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField 
-              label="Message / Content" 
-              multiline 
-              rows={4} 
-              fullWidth 
-              value={newBulletin.message} 
-              onChange={(e) => setNewBulletin({...newBulletin, message: e.target.value})} 
-              placeholder="Enter official announcement details here..."
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenBulletinDialog(false)} color="inherit">Cancel</Button>
-          <Button onClick={handlePostBulletin} variant="contained" color="primary">Post Update</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

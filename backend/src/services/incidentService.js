@@ -21,6 +21,7 @@ function createIncident(payload) {
     mediaContentBase64,
     mediaTimestamp,
     mediaGps,
+    officeTags,
     offline = false
   } = payload;
 
@@ -46,7 +47,8 @@ function createIncident(payload) {
     mediaHash,
     mediaTimestamp: timestamp,
     mediaGps: gps,
-    mediaRef: null
+    mediaRef: null,
+    officeTags
   });
 
   if (offline) {

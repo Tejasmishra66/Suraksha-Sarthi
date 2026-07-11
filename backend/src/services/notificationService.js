@@ -91,10 +91,13 @@ function startEscalationMonitor() {
 
       escalateUpdate.run(alert.id);
       heads.forEach((head) => {
-        sendSms(
-          "+910000000000",
-          `Escalation: Alert ${alert.id} (${alert.disaster_type}) has no response in 5 minutes.`
-        );
+        // Use the actual phone from the agency head's user record, not a placeholder.
+        if (head.phone) {
+          sendSms(
+            head.phone,
+            `SDRF Escalation: Alert #${alert.id} (${alert.disaster_type}) has had no response for 5 minutes. Immediate action required.`
+          );
+        }
         db.prepare(
           "INSERT INTO alert_recipients (alert_id, volunteer_id, user_id, channel, responded) VALUES (?, ?, ?, ?, 0)"
         ).run(alert.id, null, head.id, "escalation_sms");

@@ -1,0 +1,28 @@
+SDRF HELPING HANDS - Quick Summary
+Problem 1: Slow Communication Between Departments
+Digital Task Board: A simple screen where commanders assign tasks directly to specific departments.
+Smart Location Alerts: The system automatically messages only the officials in charge of the disaster area.
+Problem 2: Messy and Fake Field Data
+Offline Mode: The app saves reports when there's no internet and uploads them automatically later.
+Easy Forms: Users pick from drop-down menus instead of typing, reducing mistakes.
+Fake-Proof Photos: Photos must be taken inside the app (no gallery uploads) and are locked with exact GPS and time.
+Problem 3: Managing Volunteers & Resources
+Skill Tags: Volunteers are labeled by their specific skills (e.g., Mountain Rescue) to send the right people.
+Local Alerts: Only volunteers within a 10km radius get notified to avoid confusion.
+Offline Guides: The app auto-downloads survival and rescue manuals to use without internet.
+Problem 4: Departments Missing Important Information
+Official News Feed: A verified, category-based timeline just for government updates (like a secure Twitter).
+Map Pins: Agencies can drop warning pins on a shared map so everyone sees the danger instantly.
+Problem 5: Knowing if the App/System is Down
+Auto-Check: The app silently checks in every 5 minutes. If it stops, the dashboard warns the commander.
+SMS Backup: If the app is offline, the system automatically sends an emergency SMS or phone call to the officer.
+Problem 6: Tracking Equipment (Asset Management)
+QR Code Tracking: Every important tool has a QR code. Scan it when it leaves, scan again when it returns.
+Transfer System: If moving tools to another office, the sender scans 'Dispatch' and the receiver scans 'Confirm'.
+Live Equipment Map: A web screen showing exactly where all equipment is right now, based on its last scan.
+System Architecture: The Best Database
+Top Choice - PostgreSQL (with PostGIS): It is the absolute best for this project. It handles location/map data perfectly, manages heavy emergency traffic without crashing, and stores offline sync data easily.
+Why not MongoDB?: It struggles to link related data together (like assigning a specific tool to a specific office).
+Why not MySQL?: Its map and location-tracking features are very weak compared to PostgreSQL.
+Why not SQLite?: It is great for the mobile app's offline storage, but the main web server will crash if 50 disaster teams try to upload data at the exact same second.
+Why not Firebase?: It makes complex searches very difficult (e.g., finding volunteers with specific skills who are also within a 10km radius).
