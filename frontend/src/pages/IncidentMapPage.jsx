@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, Container, Grid, Paper, Stack, Typography, Chip, Button, Checkbox, 
-  Select, MenuItem, Divider, Tabs, Tab
+  Select, MenuItem, Divider, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel
 } from '@mui/material';
 import {
   LocationOnRounded as LocationOnIcon,
@@ -15,8 +15,8 @@ import {
   UpdateRounded as UpdateIcon,
   InfoRounded as InfoIcon
 } from '@mui/icons-material';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-leaflet';
-import { fetchAlerts } from '../api/client';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, useMapEvents } from 'react-leaflet';
+import { fetchAlerts, fetchIntelPins, createAlert, createIntelPin } from '../api/client';
 import GeofenceAlert from '../components/GeofenceAlert';
 
 const HIMACHAL_CENTER = [31.1048, 77.1734];
@@ -60,6 +60,48 @@ export default function IncidentMapPage() {
   const [intelData, setIntelData] = useState([]);
   const [mapView, setMapView] = useState('terrain');
 
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [pinForm, setPinForm] = useState({ type: 'alert', lat: '', lng: '', severity: 'Medium', disaster_type: '', note: '', department: '' });
+
+  const loadData = () => {
+    fetchAlerts().then(data => setAlertsData(data || [])).catch(e => console.error(e));
+    fetchIntelPins().then(data => setIntelData(data || [])).catch(e => console.error(e));
+  };
+
+  const handlePinSubmit = async () => {
+    try {
+      if (pinForm.type === 'alert') {
+        await createAlert({
+          disaster_type: pinForm.disaster_type,
+          severity: pinForm.severity,
+          lat: pinForm.lat,
+          lng: pinForm.lng
+        });
+      } else {
+        await createIntelPin({
+          lat: pinForm.lat,
+          lon: pinForm.lng,
+          note: pinForm.note,
+          department: pinForm.department || 'General'
+        });
+      }
+      setPinDialogOpen(false);
+      loadData();
+    } catch (e) {
+      alert("Failed to create pin");
+    }
+  };
+
+  const MapClickHandler = () => {
+    useMapEvents({
+      click(e) {
+        setPinForm({ ...pinForm, lat: e.latlng.lat, lng: e.latlng.lng });
+        setPinDialogOpen(true);
+      }
+    });
+    return null;
+  };
+
   useEffect(() => {
     const mandiAlerts = [
       { disaster_type: 'Massive Landslide', severity: 'High', lat: 31.7087, lng: 76.9320, created_at: new Date().toISOString() },
@@ -67,15 +109,7 @@ export default function IncidentMapPage() {
       { disaster_type: 'Rescue Operation', severity: 'High', lat: 31.7102, lng: 76.9310, created_at: new Date(Date.now() - 7200000).toISOString() }
     ];
 
-    fetchAlerts().then(data => {
-      setAlertsData([...mandiAlerts, ...(data || [])]);
-    }).catch(e => {
-      console.error(e);
-      setAlertsData(mandiAlerts); // Fallback to mock data if backend is offline
-    });
-    import('../api/client').then(({ fetchIntelPins }) => {
-      fetchIntelPins().then(data => setIntelData(data || [])).catch(e => console.error(e));
-    });
+    loadData();
 
     fetch('https://raw.githubusercontent.com/udit-001/india-maps-data/main/geojson/himachal-pradesh.geojson')
       .then(res => res.json())
@@ -163,7 +197,7 @@ export default function IncidentMapPage() {
               <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: '1px solid #e2e8f0' }}>
                 <Typography variant="subtitle2" fontWeight={800} color="#0f172a" mb={2}>Quick Actions</Typography>
                 <Stack spacing={1.5}>
-                  <Button variant="outlined" startIcon={<AddLocationIcon />} sx={{ color: '#0f4a30', borderColor: '#0f4a30', bgcolor: '#f0fdf4', fontWeight: 700, justifyContent: 'flex-start', px: 2, py: 1, borderRadius: 2 }}>
+                  <Button variant="outlined" startIcon={<AddLocationIcon />} sx={{ color: '#0f4a30', borderColor: '#0f4a30', bgcolor: '#f0fdf4', fontWeight: 700, justifyContent: 'flex-start', px: 2, py: 1, borderRadius: 2 }} onClick={() => alert("Click anywhere on the map to add a pin.")}>
                     Add Warning Pin
                   </Button>
                   <Button variant="outlined" startIcon={<ShareIcon />} sx={{ color: '#0f4a30', borderColor: '#cbd5e1', fontWeight: 700, justifyContent: 'flex-start', px: 2, py: 1, borderRadius: 2, '&:hover': { bgcolor: '#f8fafc' } }}>
@@ -218,6 +252,7 @@ export default function IncidentMapPage() {
                     : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"} 
                   attribution="Tiles &copy; Esri" 
                 />
+                <MapClickHandler />
                 <GeofenceAlert alerts={alertsData} />
                 
                 {/* Labels and boundaries overlay for Satellite view */}
@@ -411,6 +446,45 @@ export default function IncidentMapPage() {
           </Grid>
         </Grid>
       </Container>
+
+      <Dialog open={pinDialogOpen} onClose={() => setPinDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Drop a Pin</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel>Pin Type</InputLabel>
+              <Select value={pinForm.type} label="Pin Type" onChange={e => setPinForm({ ...pinForm, type: e.target.value })}>
+                <MenuItem value="alert">Disaster Alert</MenuItem>
+                <MenuItem value="intel">Intel / Field Report</MenuItem>
+              </Select>
+            </FormControl>
+            
+            {pinForm.type === 'alert' ? (
+              <>
+                <TextField label="Disaster Type (e.g. Landslide, Flood)" value={pinForm.disaster_type} onChange={e => setPinForm({ ...pinForm, disaster_type: e.target.value })} />
+                <FormControl fullWidth>
+                  <InputLabel>Severity</InputLabel>
+                  <Select value={pinForm.severity} label="Severity" onChange={e => setPinForm({ ...pinForm, severity: e.target.value })}>
+                    <MenuItem value="Low">Low</MenuItem>
+                    <MenuItem value="Medium">Medium</MenuItem>
+                    <MenuItem value="High">High</MenuItem>
+                  </Select>
+                </FormControl>
+              </>
+            ) : (
+              <>
+                <TextField label="Department (e.g. SDRF, Medical)" value={pinForm.department} onChange={e => setPinForm({ ...pinForm, department: e.target.value })} />
+                <TextField label="Note / Details" multiline rows={3} value={pinForm.note} onChange={e => setPinForm({ ...pinForm, note: e.target.value })} />
+              </>
+            )}
+            <Typography variant="caption" color="text.secondary">Location: {Number(pinForm.lat).toFixed(4)}, {Number(pinForm.lng).toFixed(4)}</Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPinDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handlePinSubmit} variant="contained" sx={{ bgcolor: '#0f4a30' }}>Create Pin</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

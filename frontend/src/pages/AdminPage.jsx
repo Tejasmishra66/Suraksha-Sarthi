@@ -21,7 +21,7 @@ import {
   TableRow,
   CircularProgress
 } from '@mui/material';
-import { createUser, fetchAuditLogs } from '../api/client';
+import { createUser, fetchAuditLogs, fetchAgencies, fetchAgencyMembers, createAgencyMember } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 
@@ -44,6 +44,12 @@ export default function AdminPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Agency Management State
+  const [selectedAgency, setSelectedAgency] = useState('');
+  const [agencyMembers, setAgencyMembers] = useState([]);
+  const [agencyFormData, setAgencyFormData] = useState({ name: '', role: 'officer', phone: '', address: '' });
+  const [agencyMsg, setAgencyMsg] = useState('');
+
   // Protect route
   if (!user || user.role !== 'admin') {
     return <Navigate to="/home" />;
@@ -51,6 +57,10 @@ export default function AdminPage() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleAgencyChange = (e) => {
+    setAgencyFormData({ ...agencyFormData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
@@ -74,6 +84,29 @@ export default function AdminPage() {
     }
   };
 
+  const handleAgencyMemberSubmit = async (e) => {
+    e.preventDefault();
+    setAgencyMsg('');
+    try {
+      await createAgencyMember(selectedAgency, agencyFormData);
+      setAgencyMsg('Member added successfully.');
+      setAgencyFormData({ name: '', role: 'officer', phone: '', address: '' });
+      loadAgencyMembers(selectedAgency); // Refresh list
+    } catch (err) {
+      setAgencyMsg(err.response?.data?.message || 'Failed to add member.');
+    }
+  };
+
+  const loadAgencyMembers = async (agency) => {
+    try {
+      const data = await fetchAgencyMembers(agency);
+      setAgencyMembers(data || []);
+    } catch (e) {
+      console.error(e);
+      setAgencyMembers([]);
+    }
+  };
+
   React.useEffect(() => {
     if (tab === 1) {
       setLoadingAudit(true);
@@ -92,6 +125,7 @@ export default function AdminPage() {
           <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 4, borderBottom: '1px solid #e2e8f0' }}>
             <Tab label="User Management" />
             <Tab label="Audit Logs" />
+            <Tab label="Agency Management" />
           </Tabs>
 
           {tab === 0 && (
@@ -214,6 +248,75 @@ export default function AdminPage() {
                     )}
                   </TableBody>
                 </Table>
+              )}
+            </Box>
+          )}
+
+          {tab === 2 && (
+            <Box>
+              <Typography variant="h6" fontWeight={700} sx={{ mb: 3, color: '#003366' }}>Agency Management</Typography>
+              <FormControl sx={{ minWidth: 200, mb: 4 }}>
+                <InputLabel>Select Agency</InputLabel>
+                <Select
+                  value={selectedAgency}
+                  label="Select Agency"
+                  onChange={(e) => {
+                    setSelectedAgency(e.target.value);
+                    loadAgencyMembers(e.target.value);
+                  }}
+                >
+                  {agencies.map((agency) => (
+                    <MenuItem key={agency} value={agency}>{agency}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {selectedAgency && (
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={4}>
+                  <Box flex={1}>
+                    <Typography variant="subtitle1" fontWeight={700} mb={2}>Members</Typography>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: '#f1f5f9' }}>
+                          <TableCell>Name</TableCell>
+                          <TableCell>Role</TableCell>
+                          <TableCell>Phone</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {agencyMembers.map(m => (
+                          <TableRow key={m.id}>
+                            <TableCell>{m.name}</TableCell>
+                            <TableCell>{m.role}</TableCell>
+                            <TableCell>{m.phone}</TableCell>
+                          </TableRow>
+                        ))}
+                        {agencyMembers.length === 0 && (
+                          <TableRow><TableCell colSpan={3} align="center">No members found</TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </Box>
+
+                  <Box flex={1} component="form" onSubmit={handleAgencyMemberSubmit}>
+                    <Typography variant="subtitle1" fontWeight={700} mb={2}>Add New Member</Typography>
+                    {agencyMsg && <Alert severity="info" sx={{ mb: 2 }}>{agencyMsg}</Alert>}
+                    <Stack spacing={2}>
+                      <TextField required size="small" label="Name" name="name" value={agencyFormData.name} onChange={handleAgencyChange} />
+                      <FormControl required size="small" fullWidth>
+                        <InputLabel>Role</InputLabel>
+                        <Select name="role" value={agencyFormData.role} label="Role" onChange={handleAgencyChange}>
+                          <MenuItem value="officer">Officer</MenuItem>
+                          <MenuItem value="worker">Worker</MenuItem>
+                          <MenuItem value="volunteer">Volunteer</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <TextField required size="small" label="Phone" name="phone" value={agencyFormData.phone} onChange={handleAgencyChange} />
+                      <TextField size="small" label="Address" name="address" value={agencyFormData.address} onChange={handleAgencyChange} />
+                      <Button type="submit" variant="contained" sx={{ bgcolor: '#003366' }}>Add Member</Button>
+                    </Stack>
+                  </Box>
+                </Stack>
               )}
             </Box>
           )}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Grid, Paper, Stack, Typography, Chip, Button, 
   Select, MenuItem, Tabs, Tab, TextField, InputAdornment, Avatar,
-  Checkbox, FormGroup, FormControlLabel, Pagination
+  Checkbox, FormGroup, FormControlLabel, Pagination, Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel
 } from '@mui/material';
 import {
   VerifiedRounded as VerifiedIcon,
@@ -21,7 +21,8 @@ import {
   MedicalServicesRounded as BagIcon,
   SyncRounded as SyncIcon
 } from '@mui/icons-material';
-import { fetchBulletins } from '../api/client';
+import { fetchBulletins, createBulletin } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORIES = [
   'Weather Alerts',
@@ -43,9 +44,13 @@ const getCategoryStyles = (category) => {
 };
 
 export default function UpdatesPage() {
+  const { user } = useAuth();
   const [feedData, setFeedData] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState(CATEGORIES);
+  
+  const [postOpen, setPostOpen] = useState(false);
+  const [postForm, setPostForm] = useState({ category: '', message: '' });
   
   const handleCategoryToggle = (cat) => {
     if (selectedCategories.includes(cat)) {
@@ -55,7 +60,7 @@ export default function UpdatesPage() {
     }
   };
 
-  useEffect(() => {
+  const loadBulletins = () => {
     fetchBulletins()
       .then(data => {
         if (data && data.length > 0) {
@@ -69,10 +74,24 @@ export default function UpdatesPage() {
             ...getCategoryStyles(b.category)
           })));
         }
-        // No fallback mock data
       })
       .catch(e => console.error(e));
+  };
+
+  useEffect(() => {
+    loadBulletins();
   }, []);
+
+  const handlePostSubmit = async () => {
+    try {
+      await createBulletin(postForm);
+      setPostOpen(false);
+      setPostForm({ category: '', message: '' });
+      loadBulletins();
+    } catch (e) {
+      alert("Failed to post bulletin");
+    }
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f4f6f8', fontFamily: "'Inter', sans-serif" }}>
@@ -93,7 +112,14 @@ export default function UpdatesPage() {
 
       {/* 2. TAB NAVIGATION BAR (Now just Search) */}
       <Container maxWidth="xl" sx={{ mt: -3, position: 'relative', zIndex: 2, mb: 4 }}>
-        <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: '#fff', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', p: 2 }}>
+        <Paper elevation={2} sx={{ borderRadius: 2, bgcolor: '#fff', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
+          <Box>
+            {user && (user.role === 'admin' || user.role === 'department') && (
+              <Button variant="contained" sx={{ bgcolor: '#0f4a30' }} onClick={() => setPostOpen(true)}>
+                Post Update
+              </Button>
+            )}
+          </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField 
               size="small" 
@@ -106,6 +132,29 @@ export default function UpdatesPage() {
           </Box>
         </Paper>
       </Container>
+
+      {/* POST BULLETIN DIALOG */}
+      <Dialog open={postOpen} onClose={() => setPostOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Post Official Update</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel>Category</InputLabel>
+              <Select value={postForm.category} label="Category" onChange={e => setPostForm({ ...postForm, category: e.target.value })}>
+                {CATEGORIES.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField 
+              fullWidth multiline rows={4} label="Message" 
+              value={postForm.message} onChange={e => setPostForm({ ...postForm, message: e.target.value })} 
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPostOpen(false)}>Cancel</Button>
+          <Button onClick={handlePostSubmit} variant="contained" sx={{ bgcolor: '#0f4a30' }} disabled={!postForm.category || !postForm.message}>Post</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 3. MAIN DASHBOARD CONTENT */}
       <Container maxWidth="xl" sx={{ pb: 8 }}>

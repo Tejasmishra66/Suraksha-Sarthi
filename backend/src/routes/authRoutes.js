@@ -5,6 +5,7 @@ const { db } = require("../db/database");
 const env = require("../config/env");
 const auth = require("../middlewares/auth");
 const requireRole = require("../middlewares/requireRole");
+const { z } = require("zod");
 
 const router = express.Router();
 
@@ -50,12 +51,21 @@ function clearLoginAttempts(ip) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+const loginSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(1, "Password is required"),
+});
+
 router.post("/login", loginRateLimit, (req, res) => {
-  // Issues JWT token for dashboard/mobile clients.
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ message: "email and password are required" });
+  // Validate input using Zod
+  const validation = loginSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ 
+      message: "Validation error", 
+      errors: validation.error.flatten().fieldErrors 
+    });
   }
+  const { email, password } = validation.data;
 
   const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
   if (!user) {
@@ -102,7 +112,27 @@ router.post("/login", loginRateLimit, (req, res) => {
   });
 });
 
+const createUserSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.enum(["admin", "agency_head", "user", "volunteer"], { errorMap: () => ({ message: "Invalid role" }) }),
+  department: z.string().optional().nullable(),
+  phone: z.string().min(10, "Phone number is required"),
+  address: z.string().optional().nullable(),
+  place: z.string().optional().nullable(),
+  district: z.string().optional().nullable(),
+});
+
 router.post("/create-user", auth, requireRole("admin"), (req, res) => {
+  const validation = createUserSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ 
+      message: "Validation error", 
+      errors: validation.error.flatten().fieldErrors 
+    });
+  }
+
   const {
     name,
     email,
@@ -113,13 +143,7 @@ router.post("/create-user", auth, requireRole("admin"), (req, res) => {
     address,
     place,
     district
-  } = req.body;
-
-  if (!name || !email || !password || !role || !phone) {
-    return res.status(400).json({
-      message: "name, email, password, role, and phone number are required"
-    });
-  }
+  } = validation.data;
 
   const normalizedEmail = String(email).trim().toLowerCase();
   const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
@@ -159,12 +183,26 @@ router.post("/create-user", auth, requireRole("admin"), (req, res) => {
   });
 });
 
-router.post("/signup", (req, res) => {
-  const { name, email, password, phone, address, place, district } = req.body;
+const signupSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  phone: z.string().min(10, "Phone number is required"),
+  address: z.string().optional().nullable(),
+  place: z.string().optional().nullable(),
+  district: z.string().optional().nullable(),
+});
 
-  if (!name || !email || !password || !phone) {
-    return res.status(400).json({ message: "name, email, password, and phone number are required" });
+router.post("/signup", (req, res) => {
+  const validation = signupSchema.safeParse(req.body);
+  if (!validation.success) {
+    return res.status(400).json({ 
+      message: "Validation error", 
+      errors: validation.error.flatten().fieldErrors 
+    });
   }
+
+  const { name, email, password, phone, address, place, district } = validation.data;
 
   const normalizedEmail = String(email).trim().toLowerCase();
   const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);

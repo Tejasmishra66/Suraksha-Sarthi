@@ -2,7 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
-
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const authMiddleware = require("./middlewares/auth");
 const errorHandler = require("./middlewares/errorHandler");
 const logger = require("./utils/logger");
@@ -26,6 +27,19 @@ const auditRoutes = require("./routes/auditRoutes");
 const pushRoutes = require("./routes/pushRoutes");
 
 const app = express();
+
+// Apply security headers
+app.use(helmet());
+
+// Global Rate Limiting (e.g., 1000 requests per 15 mins per IP)
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests from this IP, please try again after 15 minutes" }
+});
+app.use(globalLimiter);
 
 // Restrict CORS to localhost dev origins only.
 // In production, replace with an explicit allowlist of your deployed domain(s).
