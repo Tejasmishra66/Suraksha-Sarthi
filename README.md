@@ -6,7 +6,11 @@ SDRF Helping Hands is a disaster-response coordination web app for incident trac
 
 The backend is the source of truth. It exposes REST APIs for authentication, tasks, alerts, incidents, volunteers, resources, verification, sync, bulletins, intel pins, and heartbeat monitoring. The frontend signs in with the demo account, calls those APIs, renders the task board and incident map, uploads media, and stores offline actions locally until they are flushed back to the server.
 
-Recent UI updates include a detailed-address field for incidents, an agency dropdown on the task board, and department dropdowns for adding volunteers and resources.
+Recent updates have standardized the entire user interface into a **unified 3-column dashboard architecture** across all primary workflows:
+- **Report Incident**: Dedicated left-side stepper, center form, and live recent incidents feed on the right.
+- **Alerts (Updates)**: Left-side advanced filtering, central alerts feed, and right-side metric summaries.
+- **Equipment & Volunteers**: Matching 3-column data grids and statistical sidebars.
+- **Map Centric View**: Full-screen mapping with floating navigation overlays.
 
 ### Runtime Flow
 1. `backend/` starts the Express server, loads the SQLite schema, seeds demo data, and enables the alert, bulletin, intel, and heartbeat monitors.
@@ -98,7 +102,7 @@ Suraksha Sarthi operates on a strict **4-tier trust model**. Account creation wi
 
 You can start both the backend and frontend together using a single command from the **root directory**.
 
-```powershell
+```bash
 # 1. Install root dependencies (like concurrently)
 npm install
 
@@ -112,20 +116,22 @@ npm run dev
 ### Individual Start
 
 ### Backend
-```powershell
-cd C:\Users\hp\Suraksha-Sarthi\backend
+```bash
+cd backend
 npm install
-copy .env.example .env
+cp .env.example .env
 npm run dev
 ```
+*(On Windows, use `copy .env.example .env` instead of `cp`)*
 
 ### Frontend
-```powershell
-cd C:\Users\hp\Suraksha-Sarthi\frontend
+```bash
+cd frontend
 npm install
-copy .env.example .env
+cp .env.example .env
 npm run dev
 ```
+*(On Windows, use `copy .env.example .env` instead of `cp`)*
 
 Open the frontend at `http://localhost:5173` and use the demo credentials below.
 
@@ -138,27 +144,27 @@ If port `5173` is already in use, Vite will automatically pick the next free por
 
 ## Default Local Ports
 
-- Backend: `http://localhost:4001`
+- Backend: `http://localhost:4001` (or `4002`)
 - Frontend: `http://localhost:5173`
 - Frontend fallback when busy: `http://localhost:5174`
 
 ## Useful Scripts
 
 - Backend test suite:
-```powershell
-cd C:\Users\hp\Suraksha-Sarthi\backend
+```bash
+cd backend
 npm test
 ```
 
 - Backend seed only:
-```powershell
-cd C:\Users\hp\Suraksha-Sarthi\backend
+```bash
+cd backend
 npm run seed
 ```
 
 - Frontend production build:
-```powershell
-cd C:\Users\hp\Suraksha-Sarthi\frontend
+```bash
+cd frontend
 npm run build
 ```
 
