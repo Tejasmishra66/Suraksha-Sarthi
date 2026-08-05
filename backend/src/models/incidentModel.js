@@ -20,7 +20,7 @@ function createIncident(data) {
     data.description,
     data.disasterType,
     data.lat,
-    data.lng,
+    data.lng || data.lon,
     data.address,
     data.agencyAssigned,
     data.mediaHash,

@@ -23,13 +23,10 @@ function seedUsers() {
 function seedVolunteers() {
   if (hasRows("volunteers")) return;
 
-  const insert = db.prepare(
+  const volunteerInsert = db.prepare(
     "INSERT INTO volunteers (name, phone, lat, lng, capabilities, terrain_restrictions, department, place, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   );
-
-  insert.run("Asha Verma", "+911111111111", 28.6139, 77.209, "SAR,FMR", "none", "SDRF", "Shimla", 1);
-  insert.run("Kabir Singh", "+912222222222", 28.6239, 77.219, "Medical", "mountain", "Medical", "Manali", 1);
-  insert.run("Naina Rao", "+913333333333", 28.5939, 77.189, "Debris,Utility", "flooded", "Utility", "Dharamshala", 1);
+  // Real volunteers can be added later
 }
 
 function seedResources() {
@@ -48,28 +45,11 @@ function seedIncidentsAndTasks() {
   if (hasRows("incidents")) return;
 
   const incidentInsert = db.prepare(
-    `INSERT INTO incidents
-      (title, description, disaster_type, lat, lng, status, agency_assigned, verification_state)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO incidents 
+     (type, description, lat, lng, reported_by_user_id, status, district, tehsil, place) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
-
-  const incidentInfo = incidentInsert.run(
-    "Urban Flood Sector 9",
-    "Water level rising near school and bus stop",
-    "Flood",
-    28.6125,
-    77.204,
-    "In Progress",
-    "SDRF",
-    "Unverified"
-  );
-
-  const taskInsert = db.prepare(
-    "INSERT INTO tasks (incident_id, title, details, assigned_agency, notification_agencies, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  );
-
-  taskInsert.run(incidentInfo.lastInsertRowid, "Deploy rescue boats", "Cover sectors 9A-9C", "SDRF", JSON.stringify(["SDRF", "Police"]), "New", 1);
-  taskInsert.run(incidentInfo.lastInsertRowid, "Set up medical camp", "Primary school building", "Medical", JSON.stringify(["Medical"]), "In Progress", 1);
+  // Real incidents will be reported by users and fetched from HPSDMA
 }
 
 function seedBulletins() {

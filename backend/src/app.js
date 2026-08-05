@@ -25,6 +25,7 @@ const equipmentRoutes = require("./routes/equipment");
 const muteRoutes = require("./routes/muteRoutes");
 const auditRoutes = require("./routes/auditRoutes");
 const pushRoutes = require("./routes/pushRoutes");
+const hpsdmaRoutes = require("./routes/hpsdmaRoutes");
 
 const app = express();
 
@@ -54,6 +55,10 @@ app.use(cors({
     // Allow non-browser requests (e.g. curl, Postman, server-to-server).
     if (!origin) return callback(null, true);
     if (allowedOrigins.some(o => origin.startsWith(o))) {
+      return callback(null, true);
+    }
+    // Allow local network IP addresses for mobile testing/dev
+    if (/^http:\/\/(10|192\.168|172\.(1[6-9]|2[0-9]|3[0-1]))\.\d+\.\d+\.\d+:\d+$/.test(origin)) {
       return callback(null, true);
     }
     return callback(new Error(`CORS: origin '${origin}' is not allowed`), false);
@@ -87,12 +92,13 @@ app.use("/agencies", authMiddleware, agencyMemberRoutes);
 app.use("/bulletins", bulletinRoutes);
 app.use("/intel", authMiddleware, intelRoutes);
 app.use("/sync", authMiddleware, syncRoutes);
-app.use("/incidents", authMiddleware, incidentRoutes);
+app.use("/incidents", incidentRoutes);
 app.use("/status", authMiddleware, statusRoutes);
 app.use("/equipment", authMiddleware, equipmentRoutes);
 app.use("/mutes", authMiddleware, muteRoutes);
 app.use("/audit", authMiddleware, auditRoutes);
 app.use("/push", pushRoutes);
+app.use("/hpsdma", hpsdmaRoutes);
 
 app.use(errorHandler);
 

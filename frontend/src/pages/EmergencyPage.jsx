@@ -1,608 +1,373 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Container,
-  Grid,
-  Stack,
-  Tab,
-  Tabs,
-  TextField,
-  Divider,
-  ButtonBase,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Typography,
-  Paper,
-  Avatar,
-  Chip,
-  InputAdornment,
-  IconButton,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Checkbox,
-  ListItemText
-} from '@mui/material';
-import ReportRoundedIcon from '@mui/icons-material/ReportRounded';
-import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded';
-import CallRoundedIcon from '@mui/icons-material/CallRounded';
-import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
-import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded';
-import SendRoundedIcon from '@mui/icons-material/SendRounded';
-import LockRoundedIcon from '@mui/icons-material/LockRounded';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import WarningRoundedIcon from '@mui/icons-material/WarningRounded';
+import React, { useState, useEffect } from 'react';
+import { Box, Container, Grid, Typography, TextField, Button, Avatar, Select, MenuItem, FormControl, InputLabel, Divider } from '@mui/material';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
+
+// Icons
+import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
-import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import LocalPoliceRoundedIcon from '@mui/icons-material/LocalPoliceRounded';
+import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded';
+import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded';
+import CallRoundedIcon from '@mui/icons-material/CallRounded';
+import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
+import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 
-import { createAlert, createIncident, uploadIncidentMedia, fetchTasks, updateTask } from '../api/client';
-import { useAuth } from '../context/AuthContext';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+import { createIncident, fetchIncidents } from '../api/client';
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+const NAVY = '#0B2545';
+const BLUE = '#1D4ED8';
+const LIGHT_BLUE = '#EFF6FF';
+const RED = '#DC2626';
+const ORANGE = '#F59E0B';
+const GREEN = '#10B981';
 
-const HIMACHAL_CENTER = [31.1048, 77.1734];
-const HIMACHAL_BOUNDS = [
-  [30.2, 75.6],
-  [33.5, 79.6],
-];
-
-function LocationSelector({ onSelect }) {
-  useMapEvents({
-    click(e) {
-      onSelect(e.latlng);
-    },
-  });
-  return null;
-}
-
-const emergencyTypes = [
-  { value: 'medical', label: 'Medical Emergency', icon: <ReportRoundedIcon color="error" /> },
-  { value: 'fire', label: 'Fire Incident', icon: <ReportRoundedIcon color="error" /> },
-  { value: 'natural-disaster', label: 'Natural Disaster', icon: <WarningRoundedIcon color="warning" /> },
-  { value: 'accident', label: 'Accident', icon: <ErrorOutlineRoundedIcon color="warning" /> },
-  { value: 'other', label: 'Other', icon: <InfoRoundedIcon color="info" /> },
-];
-
-const districts = [
-  'Bilaspur', 'Chamba', 'Hamirpur', 'Kangra', 'Kinnaur', 'Kullu', 
-  'Lahaul and Spiti', 'Mandi', 'Shimla', 'Sirmaur', 'Solan', 'Una'
-];
-
-const departmentOptions = ['Police', 'Medical', 'Fire', 'SDRF', 'NDRF', 'Utility'];
-
-const mockActiveAlerts = [
-  { id: 1, title: 'Massive Landslide', location: 'Near Mandi Bus Stand', time: '10 mins ago', severity: 'High', icon: <WarningRoundedIcon fontSize="small" sx={{ color: '#d32f2f' }} /> },
-  { id: 2, title: 'Road Block (Debris)', location: 'Mandi Bus Stand approach', time: '1 hour ago', severity: 'Medium', icon: <WarningRoundedIcon fontSize="small" sx={{ color: '#f59e0b' }} /> },
-  { id: 3, title: 'Rescue Operation', location: 'Mandi Bus Stand Area', time: '2 hours ago', severity: 'High', icon: <ReportRoundedIcon fontSize="small" sx={{ color: '#d32f2f' }} /> }
-];
-
-const safetyTips = [
-  'Move to higher ground immediately',
-  'Avoid river banks and landslide areas',
-  'Stay updated through official channels',
-  'Keep emergency contact numbers handy',
+const SEVERITY_LEVELS = [
+  { id: 'High', title: 'High', desc: 'Severe damage, immediate attention needed', icon: <ErrorOutlineRoundedIcon />, color: RED, bg: '#FEE2E2' },
+  { id: 'Medium', title: 'Medium', desc: 'Significant impact, requires attention', icon: <WarningAmberRoundedIcon />, color: ORANGE, bg: '#FEF3C7' },
+  { id: 'Low', title: 'Low', desc: 'Minor impact, monitoring required', icon: <InfoOutlinedIcon />, color: BLUE, bg: LIGHT_BLUE },
+  { id: 'Info', title: 'Info', desc: 'General information or query', icon: <CheckRoundedIcon />, color: GREEN, bg: '#D1FAE5' }
 ];
 
 export default function EmergencyPage() {
-  const { user } = useAuth();
-  const [tab, setTab] = React.useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [emergencyForm, setEmergencyForm] = useState({
-    emergencyType: '',
-    district: '',
-    location: '',
-    description: '',
-    severity: 'Medium',
-    name: '',
-    mobile: '',
-    peopleAffected: '',
-    departments: [],
-  });
+  const navigate = useNavigate();
+  const [incidents, setIncidents] = useState([]);
+  
+  // Form State
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [severity, setSeverity] = useState('High');
+  const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const [mapDialogOpen, setMapDialogOpen] = useState(false);
-  const [mapLocation, setMapLocation] = useState(null);
-  const fileInputRef = useRef(null);
+  useEffect(() => {
+    fetchIncidents()
+      .then((d) => setIncidents(d || []))
+      .catch(() => {});
+  }, []);
 
-  const handleEmergencyFormChange = (e) => {
-    setEmergencyForm({ ...emergencyForm, [e.target.name]: e.target.value });
-  };
-
-  const handleSeverityChange = (newSeverity) => {
-    setEmergencyForm({ ...emergencyForm, severity: newSeverity });
-  };
-
-  const handleReset = () => {
-    setEmergencyForm({
-      emergencyType: '',
-      district: '',
-      location: '',
-      description: '',
-      severity: 'Medium',
-      name: '',
-      mobile: '',
-      peopleAffected: '',
-      departments: [],
-    });
-  };
-
-  const handleEmergencySubmit = async (e) => {
-    e.preventDefault();
-    if (!emergencyForm.emergencyType) {
-      alert('Please select the Type of Emergency.');
+  const handleSubmit = async () => {
+    if (!title || !description || !mobile) {
+      alert("Please fill in title, description, and mobile number.");
       return;
     }
-    setIsSubmitting(true);
-    let lat = null, lng = null;
-    const coords = emergencyForm.location.split(',');
-    if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
-      lat = parseFloat(coords[0].trim());
-      lng = parseFloat(coords[1].trim());
-    }
+    setLoading(true);
+    
+    // Simulate getting location
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await createIncident({
+            disaster_type: title, // use title as type for now
+            description: description,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            severity: severity,
+          });
+          alert("Incident Reported Successfully!");
+          navigate('/map');
+        } catch {
+          alert("Failed to report incident. Try again.");
+          setLoading(false);
+        }
+      },
+      () => {
+        alert("Could not get location. Ensure location services are enabled.");
+        setLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
 
-    // Build tags combining district and departments
-    let tags = [];
-    if (emergencyForm.district) {
-      if (emergencyForm.departments && emergencyForm.departments.length > 0) {
-        emergencyForm.departments.forEach(dept => {
-          tags.push(`${emergencyForm.district}_${dept}`);
-          tags.push(dept); // Also let general department see it
-        });
-      }
-      tags.push(emergencyForm.district);
-    } else {
-      tags = ['State'];
-    }
-
-    try {
-      const incident = await createIncident({
-        title: emergencyForm.emergencyType.toUpperCase() + ' Emergency',
-        description: emergencyForm.description,
-        disasterType: emergencyForm.emergencyType,
-        lat, lng,
-        address: lat ? '' : emergencyForm.location,
-        agencyAssigned: 'response',
-        offline: false,
-        officeTags: tags,
-      });
-
-      if (lat && lng) {
-        await createAlert({
-          disasterType: emergencyForm.emergencyType,
-          lat, lng, radiusKm: 5, severity: emergencyForm.severity.toLowerCase(),
-          officeTags: tags,
-        });
-      }
-
-      const file = fileInputRef.current?.files?.[0];
-      if (file && incident?.id) {
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('metadata', JSON.stringify({ lat, lng, timestamp: new Date().toISOString() }));
-        await uploadIncidentMedia(incident.id, fd);
-      }
-
-      alert('Incident reported successfully!');
-      handleReset();
-    } catch (error) {
-      console.error('Failed to report emergency:', error);
-      alert(`Error reporting emergency.`);
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleSOS = () => {
+    if (!navigator.geolocation) { alert('GPS not available.'); return; }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await createIncident({ disaster_type: 'SOS', description: 'EMERGENCY SOS', lat: pos.coords.latitude, lng: pos.coords.longitude, severity: 'High' });
+          alert('SOS SENT SUCCESSFULLY. SDRF IS RESPONDING.');
+        } catch { alert('SOS Failed.'); }
+      },
+      () => alert('Could not get GPS location.'),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f4f6f8', pb: 8 }}>
-      
-      {/* HERO SECTION */}
-      <Box sx={{
-        position: 'relative',
-        height: 450,
-        backgroundImage: 'url(/mountain-emergency.jpg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'top',
-        display: 'flex',
-        alignItems: 'center'
-      }}>
-        {/* Hero text removed as requested */}
-      </Box>
-
-      {/* FLOATING TABS (Only for Admin/Department) */}
-      {(user?.role === 'admin' || user?.role === 'department') && (
-        <Container maxWidth="xl" sx={{ mt: -4, position: 'relative', zIndex: 2 }}>
-          <Paper elevation={0} sx={{ 
-            borderRadius: 4, 
-            display: 'inline-block', 
-            bgcolor: '#ffffff',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-            p: 1
-          }}>
-            <Tabs
-              value={tab}
-              onChange={(e, v) => setTab(v)}
-              TabIndicatorProps={{ style: { display: 'none' } }}
-              sx={{
-                minHeight: 'auto',
-                '& .MuiTab-root': {
-                  minHeight: 'auto',
-                  py: 1.5,
-                  px: 3,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.95rem',
-                  color: '#4a5568',
-                  borderRadius: 3,
-                  transition: 'all 0.2s',
-                  '&:hover': { color: '#2a5a41', bgcolor: 'rgba(42, 90, 65, 0.05)' },
-                  '&.Mui-selected': { 
-                    color: '#ffffff', 
-                    bgcolor: '#2a5a41',
-                    boxShadow: '0 4px 12px rgba(42, 90, 65, 0.3)'
-                  }
-                }
-              }}
-            >
-              <Tab label="Report Emergency" />
-              <Tab label="Smart Alerts" />
-              <Tab label="Emergency Contacts" />
-              <Tab label="My Reports" />
-            </Tabs>
-          </Paper>
-        </Container>
-      )}
-
-      {/* MAIN CONTENT */}
-      <Container maxWidth="xl" sx={{ mt: 4 }} id="report-form">
-        {tab === 0 && (
-          <Grid container spacing={4}>
+    <Box sx={{ bgcolor: '#F8FAFC', minHeight: 'calc(100vh - 66px)', display: 'flex', flexDirection: 'column' }}>
+      <Container maxWidth="xl" sx={{ flexGrow: 1, py: 3, display: 'flex', flexDirection: 'column' }}>
+        <Grid container spacing={3} sx={{ flexGrow: 1 }}>
+          
+          {/* ══ LEFT SIDEBAR ══ */}
+          <Grid item xs={12} lg={2.5}>
+            {/* Header */}
+            <Box sx={{ bgcolor: BLUE, color: '#FFF', borderRadius: '12px 12px 0 0', p: 2, textAlign: 'center' }}>
+              <Typography sx={{ fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.05em' }}>REPORT INCIDENT</Typography>
+            </Box>
             
-            {/* LEFT COLUMN: FORM */}
-            <Grid item xs={12} lg={8}>
-              <Paper elevation={0} sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, border: '1px solid #e2e8f0' }}>
-                <Typography variant="h5" fontWeight={800} color="#1a202c" sx={{ mb: 4 }}>
-                  Report a New Emergency
-                </Typography>
-                
-                <form onSubmit={handleEmergencySubmit}>
-                  <Grid container spacing={3}>
-                    {/* Row 1 */}
-                    <Grid item xs={12} md={6}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>Type of Emergency <span style={{ color: '#d32f2f' }}>*</span></Typography>
-                      <FormControl fullWidth size="medium">
-                        <Select 
-                          name="emergencyType" 
-                          value={emergencyForm.emergencyType} 
-                          onChange={handleEmergencyFormChange}
-                          displayEmpty
-                          sx={{ borderRadius: 2, bgcolor: '#f8fafc', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e2e8f0' } }}
-                          renderValue={(selected) => {
-                            if (selected.length === 0) return <Typography color="text.secondary">Select Emergency Type</Typography>;
-                            const item = emergencyTypes.find(t => t.value === selected);
-                            return <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>{item.icon} {item.label}</Box>;
-                          }}
-                        >
-                          <MenuItem disabled value=""><em>Select Emergency Type</em></MenuItem>
-                          {emergencyTypes.map((type) => (
-                            <MenuItem key={type.value} value={type.value}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                {type.icon} {type.label}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    
-                    <Grid item xs={12} md={6}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>Location <span style={{ color: '#d32f2f' }}>*</span></Typography>
-                      <TextField 
-                        fullWidth 
-                        size="medium" 
-                        name="location" 
-                        placeholder="Search location or enter address" 
-                        value={emergencyForm.location} 
-                        onChange={handleEmergencyFormChange} 
-                        required 
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc', '& fieldset': { borderColor: '#e2e8f0' } } }}
-                        InputProps={{ 
-                          startAdornment: <InputAdornment position="start"><PlaceRoundedIcon sx={{ color: '#2a5a41' }} /></InputAdornment>,
-                          endAdornment: <InputAdornment position="end"><Button size="small" onClick={() => setMapDialogOpen(true)} sx={{ minWidth: 'auto', p: 0.5, color: '#2a5a41' }}>Map</Button></InputAdornment>
-                        }} 
-                      />
-                    </Grid>
+            {/* Stepper */}
+            <Box sx={{ bgcolor: '#FFF', borderRadius: '0 0 12px 12px', border: '1px solid #E2E8F0', borderTop: 'none', p: 3, mb: 3 }}>
+              {[
+                { num: '1', title: 'Incident Details', desc: 'Provide basic information', active: true },
+                { num: '2', title: 'Location', desc: 'Pinpoint the location' },
+                { num: '3', title: 'Incident Type', desc: 'Select type of incident' },
+                { num: '4', title: 'Photos & Videos', desc: 'Upload evidence (optional)' },
+                { num: '5', title: 'Review & Submit', desc: 'Verify and submit report' },
+              ].map((step, i) => (
+                <Box key={i} sx={{ display: 'flex', gap: 2, mb: i !== 4 ? 3 : 0, position: 'relative' }}>
+                  {i !== 4 && <Box sx={{ position: 'absolute', left: 15, top: 35, bottom: -15, width: 2, bgcolor: '#E2E8F0' }} />}
+                  <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: step.active ? BLUE : '#F1F5F9', color: step.active ? '#FFF' : '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 900, fontSize: '0.85rem', zIndex: 1 }}>
+                    {step.num}
+                  </Box>
+                  <Box sx={{ pt: 0.5 }}>
+                    <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: step.active ? BLUE : NAVY, mb: 0.2 }}>{step.title}</Typography>
+                    <Typography sx={{ fontSize: '0.7rem', fontWeight: 500, color: '#64748B' }}>{step.desc}</Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
 
-                    {/* Row 2 */}
-                    <Grid item xs={12} md={6}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>Description <span style={{ color: '#d32f2f' }}>*</span></Typography>
-                      <TextField 
-                        fullWidth 
-                        size="medium" 
-                        name="description" 
-                        multiline 
-                        minRows={4} 
-                        placeholder="Provide details about the situation..." 
-                        value={emergencyForm.description} 
-                        onChange={handleEmergencyFormChange} 
-                        required 
-                        helperText="Min. 20 characters"
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc', '& fieldset': { borderColor: '#e2e8f0' } } }}
-                      />
-                    </Grid>
-                    
-                    <Grid item xs={12} md={6}>
-                      <Grid container spacing={2}>
-                        <Grid item xs={12}>
-                          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>District <span style={{ color: '#d32f2f' }}>*</span></Typography>
-                          <FormControl fullWidth size="medium">
-                            <Select 
-                              name="district" 
-                              value={emergencyForm.district} 
-                              onChange={handleEmergencyFormChange}
-                              displayEmpty
-                              sx={{ borderRadius: 2, bgcolor: '#f8fafc', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e2e8f0' } }}
-                            >
-                              <MenuItem disabled value=""><em>Select District</em></MenuItem>
-                              {districts.map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
-                            </Select>
-                          </FormControl>
-                        </Grid>
-                        <Grid item xs={12}>
-                          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>Upload Photo / Video <span style={{ color: '#d32f2f' }}>*</span></Typography>
-                          <ButtonBase component="label" sx={{ 
-                            border: '2px dashed #cbd5e1', 
-                            p: 2.5, 
-                            borderRadius: 2, 
-                            width: '100%', 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            bgcolor: '#f8fafc', 
-                            transition: 'all 0.2s',
-                            '&:hover': { bgcolor: '#f1f5f9', borderColor: '#2a5a41' } 
-                          }}>
-                            <CloudUploadRoundedIcon sx={{ fontSize: 32, color: '#4a5568', mb: 1 }} />
-                            <Typography variant="body2" fontWeight={700} color="#1a202c">Click to upload</Typography>
-                            <Typography variant="caption" color="text.secondary">Photo will be time & location stamped</Typography>
-                            <input type="file" ref={fileInputRef} accept="image/*,video/*" hidden />
-                          </ButtonBase>
-                        </Grid>
-                      </Grid>
-                    </Grid>
+            {/* Need Immediate Help */}
+            <Box sx={{ bgcolor: '#EFF6FF', borderRadius: 3, p: 2.5, mb: 3, border: '1px solid #BFDBFE' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <WarningAmberRoundedIcon sx={{ color: BLUE, fontSize: 20 }} />
+                <Typography sx={{ fontSize: '0.85rem', fontWeight: 900, color: NAVY }}>Need Immediate Help?</Typography>
+              </Box>
+              <Typography sx={{ fontSize: '0.7rem', color: '#475569', fontWeight: 500, mb: 2 }}>
+                If this is a life-threatening emergency, press the SOS button.
+              </Typography>
+              <Button onClick={handleSOS} variant="contained" fullWidth sx={{ borderRadius: 2, py: 1.2, bgcolor: RED, fontWeight: 800, fontSize: '0.9rem', '&:hover': { bgcolor: '#B91C1C' } }}>
+                <CallRoundedIcon sx={{ fontSize: 18, mr: 1 }} /> PRESS SOS
+              </Button>
+            </Box>
 
-                    {/* Row 3 */}
-                    <Grid item xs={12}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>Severity Level <span style={{ color: '#d32f2f' }}>*</span></Typography>
-                      <Stack direction="row" spacing={2}>
-                        {[
-                          { label: 'Low', color: '#4ade80', bg: 'rgba(74, 222, 128, 0.1)', border: 'rgba(74, 222, 128, 0.4)' },
-                          { label: 'Medium', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.4)' },
-                          { label: 'High', color: '#d32f2f', bg: 'rgba(211, 47, 47, 0.1)', border: 'rgba(211, 47, 47, 0.4)' }
-                        ].map((sev) => (
-                          <Button 
-                            key={sev.label} 
-                            onClick={() => handleSeverityChange(sev.label)}
-                            sx={{ 
-                              flex: 1, 
-                              borderRadius: 2, 
-                              py: 1,
-                              fontWeight: 700,
-                              textTransform: 'none',
-                              border: '1px solid',
-                              borderColor: emergencyForm.severity === sev.label ? sev.color : '#e2e8f0',
-                              bgcolor: emergencyForm.severity === sev.label ? sev.bg : '#ffffff',
-                              color: emergencyForm.severity === sev.label ? sev.color : '#64748b',
-                              transition: 'all 0.2s',
-                              '&:hover': { borderColor: sev.color, bgcolor: sev.bg, color: sev.color }
-                            }}
-                          >
-                            {sev.label}
-                          </Button>
-                        ))}
-                      </Stack>
-                    </Grid>
-
-                    {/* Target Departments */}
-                    <Grid item xs={12}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>Notify Departments (Optional)</Typography>
-                      <FormControl fullWidth size="medium">
-                        <Select
-                          multiple
-                          name="departments"
-                          value={emergencyForm.departments}
-                          onChange={handleEmergencyFormChange}
-                          displayEmpty
-                          renderValue={(selected) => {
-                            if (selected.length === 0) return <Typography color="text.secondary">All Departments</Typography>;
-                            return (
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                {selected.map((value) => (
-                                  <Chip key={value} label={value} size="small" sx={{ bgcolor: '#dbeafe', color: '#1e40af', fontWeight: 600 }} />
-                                ))}
-                              </Box>
-                            );
-                          }}
-                          sx={{ borderRadius: 2, bgcolor: '#f8fafc', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e2e8f0' } }}
-                        >
-                          <MenuItem disabled value=""><em>Select specific departments to alert</em></MenuItem>
-                          {departmentOptions.map((dept) => (
-                            <MenuItem key={dept} value={dept}>
-                              <Checkbox checked={emergencyForm.departments.indexOf(dept) > -1} />
-                              <ListItemText primary={dept} />
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-
-                    {/* Row 4 */}
-                    <Grid item xs={12} md={4}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>Your Name <span style={{ color: '#d32f2f' }}>*</span></Typography>
-                      <TextField fullWidth size="small" name="name" placeholder="Enter your name" value={emergencyForm.name} onChange={handleEmergencyFormChange} required sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>Mobile Number <span style={{ color: '#d32f2f' }}>*</span></Typography>
-                      <TextField fullWidth size="small" name="mobile" placeholder="Enter mobile number" value={emergencyForm.mobile} onChange={handleEmergencyFormChange} required sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                      <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, color: '#1a202c' }}>People Affected (Approx.)</Typography>
-                      <TextField fullWidth size="small" name="peopleAffected" placeholder="Enter number (optional)" value={emergencyForm.peopleAffected} onChange={handleEmergencyFormChange} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
-                    </Grid>
-
-                  </Grid>
-
-                  {/* Form Footer */}
-                  <Divider sx={{ my: 4, borderColor: '#e2e8f0' }} />
-                  <Stack direction={{ xs: 'column', md: 'row' }} alignItems="center" justifyContent="space-between" spacing={3}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#64748b' }}>
-                      <LockRoundedIcon fontSize="small" />
-                      <Typography variant="caption" fontWeight={500}>All reports are secured and sent to the nearest response teams.</Typography>
-                    </Box>
-                    <Stack direction="row" spacing={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
-                      <Button 
-                        variant="outlined" 
-                        onClick={handleReset}
-                        sx={{ 
-                          borderRadius: 2, 
-                          px: 3, 
-                          py: 1, 
-                          fontWeight: 700, 
-                          color: '#2a5a41', 
-                          borderColor: '#2a5a41',
-                          textTransform: 'none',
-                          flex: { xs: 1, md: 'none' }
-                        }}
-                      >
-                        Reset
-                      </Button>
-                      <Button 
-                        type="submit" 
-                        disabled={isSubmitting} 
-                        variant="contained" 
-                        startIcon={<SendRoundedIcon />}
-                        sx={{ 
-                          borderRadius: 2, 
-                          px: 4, 
-                          py: 1, 
-                          fontWeight: 700, 
-                          bgcolor: '#2a5a41',
-                          textTransform: 'none',
-                          boxShadow: '0 4px 12px rgba(42, 90, 65, 0.2)',
-                          flex: { xs: 1, md: 'none' },
-                          '&:hover': { bgcolor: '#1e422f' }
-                        }}
-                      >
-                        {isSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Submit Report'}
-                      </Button>
-                    </Stack>
-                  </Stack>
-                </form>
-              </Paper>
-            </Grid>
-
-            {/* RIGHT COLUMN: WIDGETS */}
-            <Grid item xs={12} lg={4}>
-              <Stack spacing={4}>
-                
-                {/* Recent Alerts */}
-                <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid #e2e8f0' }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-                    <Typography variant="h6" fontWeight={800} color="#1a202c">Recent Alerts</Typography>
-                    <Button size="small" sx={{ color: '#2a5a41', fontWeight: 700, textTransform: 'none' }}>View All</Button>
-                  </Stack>
-                  <Stack spacing={2} divider={<Divider sx={{ borderColor: '#f1f5f9' }} />}>
-                    {mockActiveAlerts.length === 0 ? (
-                      <Typography variant="body2" color="#64748b" textAlign="center" py={4}>No recent alerts</Typography>
-                    ) : (
-                      mockActiveAlerts.map(alert => (
-                        <Box key={alert.id} sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                          <Box sx={{ mt: 0.5 }}>{alert.icon}</Box>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="subtitle2" fontWeight={800} color="#1a202c">{alert.title}</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>{alert.location}</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{alert.time}</Typography>
-                          </Box>
-                          <Chip 
-                            label={alert.severity} 
-                            size="small" 
-                            sx={{ 
-                              fontWeight: 700, 
-                              borderRadius: 1.5, 
-                              fontSize: '0.65rem',
-                              height: 20,
-                              bgcolor: alert.severity === 'High' ? 'rgba(211, 47, 47, 0.1)' : alert.severity === 'Medium' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(74, 222, 128, 0.1)',
-                              color: alert.severity === 'High' ? '#d32f2f' : alert.severity === 'Medium' ? '#f59e0b' : '#4ade80'
-                            }} 
-                          />
-                        </Box>
-                      ))
-                    )}
-                  </Stack>
-                </Paper>
-
-                {/* Safety Tips */}
-                <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: '1px solid #e2e8f0' }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-                    <Typography variant="h6" fontWeight={800} color="#1a202c">Safety Tips</Typography>
-                    <Button size="small" sx={{ color: '#2a5a41', fontWeight: 700, textTransform: 'none' }}>View All</Button>
-                  </Stack>
-                  <Stack spacing={2}>
-                    {safetyTips.map((tip, index) => (
-                      <Box key={index} sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-                        <CheckCircleRoundedIcon sx={{ color: '#2a5a41', fontSize: 18 }} />
-                        <Typography variant="body2" color="#4a5568" fontWeight={500}>{tip}</Typography>
-                      </Box>
-                    ))}
-                  </Stack>
-                </Paper>
-
-              </Stack>
-            </Grid>
-
+            {/* Helpline Numbers */}
+            <Typography sx={{ fontSize: '0.85rem', fontWeight: 900, color: NAVY, mb: 2, px: 1 }}>Helpline Numbers</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, px: 1 }}>
+              {[
+                { name: 'SDRF Control Room', num: '1070', icon: <SupportAgentRoundedIcon /> },
+                { name: 'Police Control Room', num: '100', icon: <LocalPoliceRoundedIcon /> },
+                { name: 'Fire Services', num: '101', icon: <LocalFireDepartmentRoundedIcon /> },
+                { name: 'Ambulance', num: '108', icon: <LocalHospitalRoundedIcon /> },
+                { name: 'Disaster Management', num: '1077', icon: <WarningAmberRoundedIcon /> },
+              ].map((h, i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: BLUE }}>
+                    {React.cloneElement(h.icon, { sx: { fontSize: 16 } })}
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: NAVY }}>{h.name}</Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: '0.85rem', fontWeight: 900, color: BLUE }}>{h.num}</Typography>
+                </Box>
+              ))}
+            </Box>
           </Grid>
-        )}
 
-        {/* Placeholders for other tabs just to show they work (Only for Admin/Department) */}
-        {(user?.role === 'admin' || user?.role === 'department') && (
-          <>
-            {tab === 1 && <Typography variant="h6" sx={{ p: 4, textAlign: 'center' }}>Smart Alerts System (To be migrated from previous design)</Typography>}
-            {tab === 2 && <Typography variant="h6" sx={{ p: 4, textAlign: 'center' }}>Emergency Contacts List (To be migrated from previous design)</Typography>}
-            {tab === 3 && <Typography variant="h6" sx={{ p: 4, textAlign: 'center' }}>My Reports & Dispatch Board (To be migrated from previous design)</Typography>}
-          </>
-        )}
+          {/* ══ CENTER AREA ══ */}
+          <Grid item xs={12} lg={6.5}>
+            <Box sx={{ bgcolor: '#FFF', borderRadius: 4, border: '1px solid #E2E8F0', p: 4 }}>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+                <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: LIGHT_BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: BLUE }}>
+                  <AssignmentTurnedInRoundedIcon sx={{ fontSize: 24 }} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: '1.4rem', fontWeight: 900, color: NAVY, mb: 0.3 }}>Report a New Incident</Typography>
+                  <Typography sx={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 500 }}>Provide accurate information to help us respond faster</Typography>
+                </Box>
+              </Box>
 
+              <Divider sx={{ mb: 4 }} />
+
+              <Typography sx={{ fontSize: '0.95rem', fontWeight: 900, color: NAVY, mb: 3 }}>Basic Information</Typography>
+
+              <Grid container spacing={3} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={7}>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 1 }}>Incident Title <span style={{color:RED}}>*</span></Typography>
+                  <TextField fullWidth placeholder="Example: Landslide near NH-3" value={title} onChange={(e)=>setTitle(e.target.value)} size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                </Grid>
+                <Grid item xs={12} md={5}>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 1 }}>Date & Time <span style={{color:RED}}>*</span></Typography>
+                  <TextField fullWidth type="datetime-local" size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} defaultValue="2025-06-03T10:30" />
+                </Grid>
+              </Grid>
+
+              <Box sx={{ mb: 3 }}>
+                <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 1 }}>Description <span style={{color:RED}}>*</span></Typography>
+                <TextField fullWidth multiline rows={4} placeholder="Please provide details about the incident..." value={description} onChange={(e)=>setDescription(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                <Typography sx={{ fontSize: '0.7rem', color: '#94A3B8', textAlign: 'right', mt: 0.5, fontWeight: 600 }}>0/500</Typography>
+              </Box>
+
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} md={6}>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 1 }}>Number of People Affected</Typography>
+                  <TextField fullWidth placeholder="Enter approximate number" size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} InputProps={{ startAdornment: <GroupsRoundedIcon sx={{color:'#94A3B8', mr:1, fontSize: 20}} /> }} />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 1 }}>Any Injuries?</Typography>
+                  <FormControl fullWidth size="small">
+                    <Select defaultValue="" displayEmpty sx={{ borderRadius: 2 }}>
+                      <MenuItem value="" disabled>Select an option</MenuItem>
+                      <MenuItem value="yes">Yes</MenuItem>
+                      <MenuItem value="no">No</MenuItem>
+                      <MenuItem value="unknown">Unknown</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+
+              <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 2 }}>Severity Level <span style={{color:RED}}>*</span></Typography>
+              <Grid container spacing={2} sx={{ mb: 5 }}>
+                {SEVERITY_LEVELS.map((level) => (
+                  <Grid item xs={12} sm={6} md={3} key={level.id}>
+                    <Box 
+                      onClick={() => setSeverity(level.id)}
+                      sx={{ 
+                        border: '2px solid', 
+                        borderColor: severity === level.id ? level.color : '#E2E8F0', 
+                        borderRadius: 2, 
+                        p: 1.5, 
+                        cursor: 'pointer',
+                        bgcolor: severity === level.id ? '#FFF' : '#F8FAFC',
+                        position: 'relative',
+                        height: '100%'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: level.color }}>
+                        {React.cloneElement(level.icon, { sx: { fontSize: 20 } })}
+                        <Typography sx={{ fontSize: '0.9rem', fontWeight: 900 }}>{level.title}</Typography>
+                      </Box>
+                      <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: '#64748B', lineHeight: 1.3 }}>{level.desc}</Typography>
+                      
+                      {severity === level.id && (
+                        <Box sx={{ position: 'absolute', top: 10, right: 10, width: 16, height: 16, borderRadius: '50%', bgcolor: level.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF' }}>
+                          <CheckRoundedIcon sx={{ fontSize: 12 }} />
+                        </Box>
+                      )}
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+
+              <Typography sx={{ fontSize: '0.95rem', fontWeight: 900, color: NAVY, mb: 3 }}>Contact Information</Typography>
+              <Grid container spacing={3} sx={{ mb: 5 }}>
+                <Grid item xs={12} md={4}>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 1 }}>Your Name <span style={{color:RED}}>*</span></Typography>
+                  <TextField fullWidth placeholder="Enter your full name" value={name} onChange={(e)=>setName(e.target.value)} size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 1 }}>Mobile Number <span style={{color:RED}}>*</span></Typography>
+                  <TextField fullWidth placeholder="Enter 10-digit mobile number" value={mobile} onChange={(e)=>setMobile(e.target.value)} size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 1 }}>Email (Optional)</Typography>
+                  <TextField fullWidth placeholder="Enter email address" size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ mb: 3 }} />
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Button variant="outlined" component={RouterLink} to="/" sx={{ borderRadius: 2, px: 3, fontWeight: 700, borderColor: '#E2E8F0', color: NAVY, textTransform: 'none' }}>
+                  ← Cancel
+                </Button>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button variant="outlined" sx={{ borderRadius: 2, px: 3, fontWeight: 700, borderColor: BLUE, color: BLUE, textTransform: 'none' }}>
+                    Save Draft
+                  </Button>
+                  <Button onClick={handleSubmit} disabled={loading} variant="contained" endIcon={<ArrowForwardRoundedIcon />} sx={{ borderRadius: 2, px: 4, fontWeight: 800, bgcolor: BLUE, textTransform: 'none', '&:hover': { bgcolor: '#1D4ED8' } }}>
+                    {loading ? 'Submitting...' : 'Submit Report'}
+                  </Button>
+                </Box>
+              </Box>
+
+            </Box>
+          </Grid>
+
+          {/* ══ RIGHT SIDEBAR ══ */}
+          <Grid item xs={12} lg={3}>
+            {/* Guidelines */}
+            <Box sx={{ bgcolor: '#FFF', borderRadius: 3, border: '1px solid #E2E8F0', p: 3, mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                <ShieldRoundedIcon sx={{ color: BLUE, fontSize: 22 }} />
+                <Typography sx={{ fontSize: '0.95rem', fontWeight: 900, color: NAVY }}>Reporting Guidelines</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {[
+                  'Provide accurate and complete information',
+                  'Share exact location for faster response',
+                  'Upload clear photos if available',
+                  'Do not report false information',
+                  'Your identity will be kept confidential'
+                ].map((tip, i) => (
+                  <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                    <CheckRoundedIcon sx={{ color: BLUE, fontSize: 16, mt: 0.3 }} />
+                    <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: NAVY, lineHeight: 1.4 }}>{tip}</Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+
+            {/* Not sure */}
+            <Box sx={{ bgcolor: '#F8FAFC', borderRadius: 3, p: 3, mb: 4, border: '1px solid #E2E8F0' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: LIGHT_BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: BLUE }}>
+                  <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+                </Box>
+                <Typography sx={{ fontSize: '0.85rem', fontWeight: 900, color: NAVY }}>Not Sure What to Report?</Typography>
+              </Box>
+              <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500, mb: 2 }}>
+                If you're unsure, report it anyway. Our team will verify and take appropriate action.
+              </Typography>
+              <Button variant="outlined" endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: 14 }} />} sx={{ borderRadius: 2, py: 0.8, borderColor: '#E2E8F0', color: NAVY, textTransform: 'none', fontWeight: 800, fontSize: '0.75rem', bgcolor: '#FFF' }}>
+                Learn What to Report
+              </Button>
+            </Box>
+
+            {/* Recent Incidents */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography sx={{ fontSize: '0.95rem', fontWeight: 900, color: NAVY }}>Recent Incidents</Typography>
+              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: BLUE, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>View All</Typography>
+            </Box>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Combine mock and live data for UI completeness */}
+              {[
+                ...incidents.slice(0, 3).map(inc => ({
+                  title: inc.disaster_type || 'Emergency reported', loc: 'Unknown District', time: 'Just now', severity: inc.severity || 'Medium'
+                })),
+                { title: 'Flood Warning in Mandi', loc: 'Mandi District', time: '10:30 AM', severity: 'High' },
+                { title: 'Landslide Alert in Kullu', loc: 'Kullu District', time: '09:45 AM', severity: 'Medium' },
+                { title: 'Road Block on NH-3', loc: 'Lahaul & Spiti', time: '09:10 AM', severity: 'Low' },
+                { title: 'SDRF Team Deployed', loc: 'Kangra District', time: '08:50 AM', severity: 'Info' }
+              ].slice(0, 4).map((inc, i) => {
+                const s = SEVERITY_LEVELS.find(lvl => lvl.id === inc.severity) || SEVERITY_LEVELS[2];
+                return (
+                  <Box key={i} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: s.bg, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {React.cloneElement(s.icon, { sx: { fontSize: 18 } })}
+                    </Box>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, lineHeight: 1.2, mb: 0.3 }}>{inc.title}</Typography>
+                      <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748B' }}>{inc.loc}</Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
+                      <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#94A3B8' }}>{inc.time}</Typography>
+                      <Box sx={{ bgcolor: s.color, color: '#FFF', fontSize: '0.6rem', fontWeight: 800, px: 1, py: 0.2, borderRadius: 1 }}>
+                        {s.title}
+                      </Box>
+                    </Box>
+                  </Box>
+                )
+              })}
+            </Box>
+          </Grid>
+        </Grid>
       </Container>
-
-      {/* Map Selection Dialog */}
-      <Dialog open={mapDialogOpen} onClose={() => setMapDialogOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle sx={{ fontWeight: 800, color: '#1a202c' }}>Select Location on Map</DialogTitle>
-        <DialogContent dividers sx={{ p: 0, height: 400 }}>
-          <MapContainer bounds={HIMACHAL_BOUNDS} center={HIMACHAL_CENTER} zoom={8} minZoom={8} maxBounds={HIMACHAL_BOUNDS} maxBoundsViscosity={1.0} style={{ height: '100%', width: '100%' }}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' />
-            <LocationSelector onSelect={(latlng) => {
-              setMapLocation(latlng);
-              setEmergencyForm((prev) => ({ ...prev, location: `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}` }));
-            }} />
-            {mapLocation && <Marker position={[mapLocation.lat, mapLocation.lng]} />}
-          </MapContainer>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setMapDialogOpen(false)} sx={{ fontWeight: 700, color: '#64748b' }}>Cancel</Button>
-          <Button onClick={() => setMapDialogOpen(false)} variant="contained" sx={{ fontWeight: 700, bgcolor: '#2a5a41', '&:hover': { bgcolor: '#1e422f' } }}>Confirm Location</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

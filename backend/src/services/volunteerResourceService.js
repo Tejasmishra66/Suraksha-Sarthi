@@ -39,6 +39,10 @@ function listTrainingKits() {
   return trainingKitModel.listTrainingKits();
 }
 
+function updateResourceStatus(id, status) {
+  return resourceModel.updateResourceStatus(id, status);
+}
+
 module.exports = {
   listVolunteers,
   createVolunteer,
@@ -46,6 +50,7 @@ module.exports = {
   listResources,
   createResource,
   listRainfallLogs,
-  listTrainingKits
+  listTrainingKits,
+  updateResourceStatus
 };
 

@@ -28,10 +28,18 @@ function exportRainfallCsv(_req, res) {
   return res.send(csv);
 }
 
+function updateResourceStatus(req, res) {
+  const { id } = req.params;
+  const { status } = req.body;
+  volunteerResourceService.updateResourceStatus(id, status);
+  return res.json({ success: true, id, status });
+}
+
 module.exports = {
   listResources,
   createResource,
   listTrainingKits,
   exportResourcesCsv,
-  exportRainfallCsv
+  exportRainfallCsv,
+  updateResourceStatus
 };

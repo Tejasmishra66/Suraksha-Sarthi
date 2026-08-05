@@ -9,5 +9,6 @@ router.get("/training-kits", asyncHandler(resourceController.listTrainingKits));
 router.get("/export/resources.csv", asyncHandler(resourceController.exportResourcesCsv));
 router.get("/export/rainfall.csv", asyncHandler(resourceController.exportRainfallCsv));
 router.post("/", asyncHandler(resourceController.createResource));
+router.patch("/:id/status", asyncHandler(resourceController.updateResourceStatus));
 
 module.exports = router;

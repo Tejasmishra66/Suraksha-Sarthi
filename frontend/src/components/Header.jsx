@@ -1,182 +1,337 @@
-import React from 'react';
-import { NavLink, useNavigate, Link as RouterLink } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Box, Container, Button, IconButton, Menu, MenuItem, ListItemIcon, Divider } from '@mui/material';
-
-import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
-import ReportProblemRoundedIcon from '@mui/icons-material/ReportProblemRounded';
-import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
-import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded';
-import PlaceRoundedIcon from '@mui/icons-material/PlaceRounded';
-import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded';
-import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
-import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
-import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
-import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
-import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
-import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded';
-import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
-import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
-
+import React, { useState, useEffect } from 'react';
+import { Box, Button, IconButton, Typography, Drawer, Stack, Divider, Chip } from '@mui/material';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import LogoIcon from './LogoIcon';
+
+import MenuRoundedIcon          from '@mui/icons-material/MenuRounded';
+import CloseRoundedIcon         from '@mui/icons-material/CloseRounded';
+import DashboardRoundedIcon     from '@mui/icons-material/DashboardRounded';
+import ShieldRoundedIcon        from '@mui/icons-material/ShieldRounded';
+import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
+import WarningAmberRoundedIcon  from '@mui/icons-material/WarningAmberRounded';
+import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded';
+import GroupsRoundedIcon        from '@mui/icons-material/GroupsRounded';
+import MapRoundedIcon           from '@mui/icons-material/MapRounded';
+import CampaignRoundedIcon      from '@mui/icons-material/CampaignRounded';
+import HomeRoundedIcon          from '@mui/icons-material/HomeRounded';
+import LockRoundedIcon          from '@mui/icons-material/LockRounded';
+import LogoutRoundedIcon        from '@mui/icons-material/LogoutRounded';
+import ErrorRoundedIcon         from '@mui/icons-material/ErrorRounded';
+import NotificationsNoneRoundedIcon from '@mui/icons-material/NotificationsNoneRounded';
+import AssignmentRoundedIcon    from '@mui/icons-material/AssignmentRounded';
+import BusinessRoundedIcon      from '@mui/icons-material/BusinessRounded';
+import InfoRoundedIcon          from '@mui/icons-material/InfoRounded';
+import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
+import Badge from '@mui/material/Badge';
+
+// ── Design Tokens ─────────────────────────────────────────────────
+const NAVY   = '#0F172A';
+const BLUE   = '#2563EB';
+const ORANGE = '#EA580C';
+const RED    = '#DC2626';
+const BG     = '#FFFFFF';
 
 export default function Header() {
   const { user, signOut } = useAuth();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
   const navigate = useNavigate();
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const open = Boolean(anchorEl);
 
-  const handleMenu = (event) => setAnchorEl(event.currentTarget);
-  const handleClose = () => setAnchorEl(null);
-  const handleAdminClick = () => { navigate('/admin'); handleClose(); };
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'agency_head';
 
   const navItems = [
-    { path: '/home', label: 'Home', icon: <HomeRoundedIcon sx={{ fontSize: 24, mb: 0.5 }} />, hasDropdown: false },
-    { path: '/emergency', label: 'Emergency', icon: <ReportProblemRoundedIcon sx={{ fontSize: 24, mb: 0.5, color: '#d32f2f' }} />, hasDropdown: true },
-    { path: '/volunteer', label: 'Volunteers', icon: <GroupsRoundedIcon sx={{ fontSize: 24, mb: 0.5, color: '#0f4a30' }} />, hasDropdown: true },
-    { path: '/reports', label: 'Field Reports', icon: <AssignmentRoundedIcon sx={{ fontSize: 24, mb: 0.5, color: '#3b82f6' }} />, hasDropdown: true, roles: ['admin', 'department'] },
-    { path: '/map', label: 'Live Map', icon: <PlaceRoundedIcon sx={{ fontSize: 24, mb: 0.5, color: '#10b981' }} />, hasDropdown: true },
-    { path: '/equipment', label: 'Equipment', icon: <Inventory2RoundedIcon sx={{ fontSize: 24, mb: 0.5, color: '#8b5cf6' }} />, hasDropdown: true, roles: ['admin', 'department'] },
-    { path: '/updates', label: 'Updates', icon: <CampaignRoundedIcon sx={{ fontSize: 24, mb: 0.5, color: '#f59e0b' }} />, hasDropdown: true, roles: ['admin', 'department'] },
-    { path: '/dashboard', label: 'Dashboard', icon: <DashboardRoundedIcon sx={{ fontSize: 24, mb: 0.5, color: '#64748b' }} />, hasDropdown: true, roles: ['admin', 'department'] },
+    { path: '/',               label: 'Home',            icon: <HomeRoundedIcon sx={{ fontSize: 18 }} /> },
+    { path: '/map',            label: 'Live Map',        icon: <MapRoundedIcon sx={{ fontSize: 18 }} /> },
+    { path: '/emergency',      label: 'Report Incident', icon: <AssignmentRoundedIcon sx={{ fontSize: 18 }} /> },
   ];
 
-  return (
-    <AppBar 
-      position="sticky" 
-      elevation={0} 
-      sx={{ 
-        bgcolor: '#ffffff', 
-        borderBottom: '1px solid #f1f5f9',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)'
-      }}
-    >
-      <Container maxWidth="xl">
-        <Toolbar disableGutters sx={{ justifyContent: 'space-between', height: 75 }}>
-          {/* Left: Logo */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, textDecoration: 'none', color: 'inherit' }} component={RouterLink} to="/">
-            <LogoIcon color="#0f4a30" />
-            <Box>
-              <Typography variant="h6" sx={{ color: '#0f4a30', fontWeight: 900, lineHeight: 1.1, letterSpacing: '-0.5px', fontSize: '1.2rem' }}>
-                SDRF
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#0f4a30', fontWeight: 900, letterSpacing: 0.5, display: 'block', mt: -0.5, fontSize: '0.65rem' }}>
-                HELPING HANDS
-              </Typography>
-              <Typography variant="caption" display="block" sx={{ color: '#94a3b8', fontSize: '0.55rem', marginTop: '-2px', fontWeight: 700 }}>
-                HIMACHAL PRADESH
-              </Typography>
-            </Box>
-          </Box>
+  if (user) {
+    navItems.push({ path: '/updates',        label: 'Alerts',          icon: <CampaignRoundedIcon sx={{ fontSize: 18 }} /> });
+    navItems.push({ path: '/equipment',      label: 'Resources',       icon: <DirectionsCarRoundedIcon sx={{ fontSize: 18 }} />, dropdown: true });
+    navItems.push({ path: '/about',          label: 'About Us',        icon: <InfoRoundedIcon sx={{ fontSize: 18 }} /> });
+    navItems.push({ path: '/volunteer',      label: 'Volunteers',      icon: <GroupsRoundedIcon sx={{ fontSize: 18 }} /> });
+  }
 
-          {/* Center: Navigation */}
-          <Box sx={{ display: { xs: 'none', lg: 'flex' }, gap: 1.5, alignItems: 'center' }}>
-            {navItems.filter(item => !item.roles || (user && item.roles.includes(user.role))).map((item) => (
-              <Button
-                key={item.path}
-                component={NavLink}
-                to={item.path}
-                disableRipple
+  const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+
+  const handleLogout = () => {
+    signOut();
+    navigate('/');
+    setDrawerOpen(false);
+  };
+
+  return (
+    <>
+      {/* MAIN NAVBAR */}
+      <Box
+        component="header"
+        sx={{
+          position: 'sticky', top: 0, zIndex: 1200,
+          height: 66,
+          display: 'flex', alignItems: 'center', px: { xs: 2, md: 5 },
+          justifyContent: 'space-between',
+          bgcolor: scrolled ? 'rgba(244,246,251,0.95)' : BG,
+          backdropFilter: 'blur(20px)',
+          borderBottom: scrolled ? '1px solid rgba(11,26,62,0.10)' : '1px solid rgba(11,26,62,0.07)',
+          boxShadow: scrolled ? '0 4px 20px rgba(11,26,62,0.07)' : 'none',
+          transition: 'all 0.25s ease',
+        }}
+      >
+        {/* LOGO */}
+        <Box component={RouterLink} to="/" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, textDecoration: 'none', flexShrink: 0 }}>
+          <Box
+            component="img"
+            src="/sdrf-logo.png"
+            alt="SDRF Logo"
+            sx={{ width: 44, height: 44, objectFit: 'contain' }}
+            onError={(e) => {
+              // Fallback if logo doesn't exist yet
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }}
+          />
+          {/* Fallback Icon Box if image fails to load */}
+          <Box sx={{
+            display: 'none', width: 40, height: 40, borderRadius: '11px',
+            background: 'linear-gradient(135deg, #1D4ED8 0%, #EA580C 100%)',
+            alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 14px rgba(29,78,216,0.30)', flexShrink: 0,
+          }}>
+            <ShieldRoundedIcon sx={{ color: '#fff', fontSize: 22 }} />
+          </Box>
+          <Box>
+            <Typography sx={{
+              fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY,
+              fontSize: '1.2rem', lineHeight: 1, letterSpacing: '-0.02em',
+            }}>
+              SURAKSHA SARTHI
+            </Typography>
+            <Typography sx={{
+              fontFamily: '"Outfit", sans-serif', color: '#64748B',
+              fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.02em',
+            }}>
+              Respond Together, Save Lives
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* DESKTOP NAV */}
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
+          {navItems.map((n) => (
+            <Box
+              key={n.path}
+              component={RouterLink}
+              to={n.path}
+              sx={{
+                px: 2, py: 1, textDecoration: 'none',
+                color: isActive(n.path) ? '#FFF' : NAVY,
+                bgcolor: isActive(n.path) ? BLUE : 'transparent',
+                borderRadius: '20px',
+                fontFamily: '"Outfit", sans-serif', fontWeight: 600, fontSize: '0.88rem',
+                display: 'flex', alignItems: 'center', gap: 0.5,
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+                '&:hover': { 
+                  color: isActive(n.path) ? '#FFF' : BLUE,
+                  bgcolor: isActive(n.path) ? '#1E40AF' : 'rgba(37,99,235,0.05)'
+                },
+              }}
+            >
+              {n.icon}
+              {n.label}
+              {n.dropdown && <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16, ml: -0.5 }} />}
+            </Box>
+          ))}
+        </Box>
+
+        {/* DESKTOP ACTIONS */}
+        <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5 }}>
+          {user ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <IconButton sx={{ color: NAVY }}>
+                <Badge badgeContent={5} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}>
+                  <NotificationsNoneRoundedIcon fontSize="small" />
+                </Badge>
+              </IconButton>
+              <Chip
+                label={isAdmin ? 'ADMIN' : 'USER'}
+                size="small"
                 sx={{
-                  color: '#64748b',
-                  fontWeight: 600,
-                  fontSize: '0.8rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  px: 1,
-                  py: 0.5,
-                  minWidth: 'auto',
-                  borderRadius: 2,
-                  transition: 'all 0.2s ease',
-                  '&:hover': { bgcolor: '#f8fafc', color: '#0f4a30' },
-                  '&.active': { 
-                    color: '#0f4a30', 
-                    borderBottom: '3px solid #0f4a30',
-                    borderRadius: 0,
-                    pb: '5px' // adjust padding to account for border
-                  }
+                  bgcolor: isAdmin ? '#FFF7ED' : '#EFF6FF',
+                  color: isAdmin ? ORANGE : BLUE,
+                  fontFamily: '"Outfit", sans-serif',
+                  fontWeight: 800, fontSize: '0.62rem', letterSpacing: '0.06em',
+                  border: `1px solid ${isAdmin ? '#FED7AA' : '#BFDBFE'}`,
+                  height: 22,
+                }}
+              />
+
+              <IconButton
+                size="small"
+                onClick={handleLogout}
+                title="Logout"
+                sx={{
+                  color: '#94A3B8',
+                  border: '1.5px solid rgba(15,23,42,0.1)',
+                  borderRadius: '9px', p: 0.75, bgcolor: '#fff',
+                  '&:hover': { color: RED, borderColor: '#FCA5A5', bgcolor: '#FEF2F2' },
                 }}
               >
-                {item.icon}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {item.label}
-                  {item.hasDropdown && <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16 }} />}
-                </Box>
+                <LogoutRoundedIcon sx={{ fontSize: 17 }} />
+              </IconButton>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <IconButton sx={{ color: NAVY }}>
+                <Badge badgeContent={2} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}>
+                  <NotificationsNoneRoundedIcon fontSize="small" />
+                </Badge>
+              </IconButton>
+              <Button
+                component={RouterLink} to="/login"
+                startIcon={<AccountCircleRoundedIcon sx={{ fontSize: '1rem !important' }} />}
+                sx={{
+                  color: '#fff',
+                  bgcolor: BLUE,
+                  fontFamily: '"Outfit", sans-serif', fontWeight: 700, fontSize: '0.87rem',
+                  borderRadius: '10px', px: 2.5, py: 0.9, textTransform: 'none',
+                  '&:hover': { bgcolor: '#1D4ED8', transform: 'translateY(-1px)' },
+                  transition: 'all 0.18s',
+                }}
+              >
+                Login / Sign Up
               </Button>
-            ))}
+            </Box>
+          )}
+        </Box>
+
+        {/* MOBILE TOGGLE */}
+        <IconButton
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            color: NAVY, border: '1.5px solid rgba(11,26,62,0.12)',
+            borderRadius: '10px', p: 0.75, bgcolor: '#fff',
+          }}
+          onClick={() => setDrawerOpen(true)}
+        >
+          <MenuRoundedIcon />
+        </IconButton>
+      </Box>
+
+      {/* MOBILE DRAWER — light */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            width: '100%', maxWidth: 300,
+            bgcolor: '#fff', p: 3, border: 'none',
+            boxShadow: '-8px 0 40px rgba(11,26,62,0.12)',
+          }
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ width: 32, height: 32, borderRadius: '8px', background: 'linear-gradient(135deg, #1D4ED8, #EA580C)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ShieldRoundedIcon sx={{ color: '#fff', fontSize: 18 }} />
+            </Box>
+            <Typography sx={{ fontFamily: '"Outfit", sans-serif', color: NAVY, fontWeight: 800, fontSize: '0.95rem' }}>
+              Suraksha Sarthi
+            </Typography>
           </Box>
+          <IconButton onClick={() => setDrawerOpen(false)} sx={{ color: '#94A3B8', border: '1px solid #E2E8F0', borderRadius: '8px', p: 0.5 }}>
+            <CloseRoundedIcon sx={{ fontSize: 18 }} />
+          </IconButton>
+        </Box>
 
-          {/* Right: Actions */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <IconButton onClick={handleMenu} sx={{ color: '#0f4a30' }}>
-              <AccountCircleRoundedIcon fontSize="large" />
-            </IconButton>
-
-            <Menu
-              anchorEl={anchorEl}
-              open={open}
-              onClose={handleClose}
-              PaperProps={{ elevation: 3, sx: { mt: 1.5, minWidth: 200, borderRadius: 2 } }}
-              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        <Stack spacing={0.5} sx={{ mb: 4 }}>
+          {navItems.map((n) => (
+            <Button
+              key={n.path}
+              component={RouterLink}
+              to={n.path}
+              onClick={() => setDrawerOpen(false)}
+              startIcon={n.icon}
+              sx={{
+                justifyContent: 'flex-start', px: 2, py: 1.4, borderRadius: '10px', textTransform: 'none',
+                color: isActive(n.path) ? BLUE : '#475569',
+                bgcolor: isActive(n.path) ? '#EFF6FF' : 'transparent',
+                fontFamily: '"Outfit", sans-serif', fontWeight: 700, fontSize: '0.92rem',
+                '&:hover': { bgcolor: '#F8FAFC', color: NAVY },
+              }}
             >
-              {user ? (
-                <>
-                  <Box sx={{ px: 2, py: 1.5, bgcolor: '#f8fafc' }}>
-                    <Typography variant="subtitle2" fontWeight={700} color="text.primary">{user.name || 'User'}</Typography>
-                    <Typography variant="caption" color="text.secondary">{user.email || 'user@example.com'}</Typography>
-                  </Box>
-                  <Divider />
-                  
-                  <MenuItem onClick={async () => {
-                    handleClose();
-                    try {
-                      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                        alert('Push notifications are not supported by your browser.');
-                        return;
-                      }
-                      const { getVapidPublicKey, subscribeToPush } = await import('../api/client');
-                      const vapidKeyData = await getVapidPublicKey();
-                      
-                      const registration = await navigator.serviceWorker.ready;
-                      const subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: vapidKeyData.publicKey
-                      });
-                      
-                      await subscribeToPush(subscription);
-                      alert('Successfully subscribed to push notifications!');
-                    } catch (e) {
-                      console.error("Failed to subscribe:", e);
-                      alert('Failed to subscribe to push notifications.');
-                    }
-                  }} sx={{ py: 1.5 }}>
-                    <ListItemIcon><NotificationsNoneRoundedIcon fontSize="small" sx={{ color: 'primary.main' }} /></ListItemIcon>
-                    <Typography fontWeight={500}>Enable Notifications</Typography>
-                  </MenuItem>
+              {n.label}
+            </Button>
+          ))}
+        </Stack>
 
-                  {user.role === 'admin' && (
-                    <MenuItem onClick={handleAdminClick} sx={{ py: 1.5 }}>
-                      <ListItemIcon><AdminPanelSettingsRoundedIcon fontSize="small" sx={{ color: 'primary.main' }} /></ListItemIcon>
-                      <Typography fontWeight={500}>Admin Portal</Typography>
-                    </MenuItem>
-                  )}
-                  <MenuItem onClick={() => { signOut(); handleClose(); }} sx={{ py: 1.5 }}>
-                    <ListItemIcon><LogoutRoundedIcon fontSize="small" sx={{ color: 'error.main' }} /></ListItemIcon>
-                    <Typography fontWeight={500} color="error.main">Logout</Typography>
-                  </MenuItem>
-                </>
-              ) : (
-                <MenuItem onClick={() => { navigate('/login'); handleClose(); }} sx={{ py: 1.5 }}>
-                  <ListItemIcon><PersonOutlineRoundedIcon fontSize="small" sx={{ color: 'primary.main' }} /></ListItemIcon>
-                  <Typography fontWeight={500} color="primary.main">Login / Register</Typography>
-                </MenuItem>
-              )}
-            </Menu>
-          </Box>
-        </Toolbar>
-      </Container>
-    </AppBar>
+        <Divider sx={{ mb: 3 }} />
+
+        <Button
+          component={RouterLink} to="/emergency" fullWidth
+          onClick={() => setDrawerOpen(false)}
+          startIcon={<ErrorRoundedIcon />}
+          sx={{
+            mb: 2, py: 1.4, bgcolor: '#FEF2F2', color: RED,
+            border: `1.5px solid #FECACA`,
+            borderRadius: '10px', fontFamily: '"Outfit", sans-serif', fontWeight: 700, textTransform: 'none',
+            '&:hover': { bgcolor: '#FEE2E2', borderColor: RED },
+          }}
+        >
+          Report Emergency SOS
+        </Button>
+
+        <Stack spacing={1.5}>
+          {user ? (
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 0.5, mb: 0.5 }}>
+                <AccountCircleRoundedIcon sx={{ color: '#94A3B8', fontSize: 18 }} />
+                <Typography sx={{ color: '#64748B', fontSize: '0.78rem', fontWeight: 600 }}>
+                  Logged in as&nbsp;
+                  <Box component="span" sx={{ color: isAdmin ? ORANGE : BLUE, fontWeight: 800 }}>
+                    {isAdmin ? 'Admin' : 'User'}
+                  </Box>
+                </Typography>
+              </Box>
+
+              <Button
+                fullWidth onClick={handleLogout}
+                startIcon={<LogoutRoundedIcon />}
+                sx={{
+                  py: 1.4, border: `1.5px solid #FECACA`, color: RED, bgcolor: '#FEF2F2',
+                  borderRadius: '10px', fontFamily: '"Outfit", sans-serif', fontWeight: 700, textTransform: 'none',
+                  '&:hover': { bgcolor: '#FEE2E2', borderColor: RED },
+                }}
+              >
+                Logout
+              </Button>
+            </>
+          ) : (
+            <Button
+              component={RouterLink} to="/login" fullWidth
+              onClick={() => setDrawerOpen(false)}
+              startIcon={<AccountCircleRoundedIcon />}
+              sx={{
+                py: 1.4,
+                color: '#fff',
+                background: `linear-gradient(135deg, ${BLUE} 0%, #1E3A8A 100%)`,
+                borderRadius: '10px', fontFamily: '"Outfit", sans-serif', fontWeight: 700, textTransform: 'none',
+                boxShadow: '0 4px 14px rgba(29,78,216,0.25)',
+              }}
+            >
+              Login
+            </Button>
+          )}
+        </Stack>
+      </Drawer>
+    </>
   );
 }

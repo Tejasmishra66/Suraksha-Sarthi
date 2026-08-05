@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4001';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002';
 
 const api = axios.create({
   baseURL: apiBaseUrl,
@@ -165,6 +165,9 @@ export async function createVolunteer(payload) {
   return data;
 }
 
+// Alias used by VolunteerPage
+export const registerVolunteer = createVolunteer;
+
 // Fetches resource availability and inventory data.
 export async function fetchResources() {
   const { data } = await api.get('/resources');
@@ -268,6 +271,11 @@ export async function fetchAuditLogs(office) {
   const url = office ? `/audit?office=${encodeURIComponent(office)}` : '/audit';
   const { data } = await api.get(url);
   return data;
+}
+
+export async function exportIncidents() {
+  const response = await api.get('/export/incidents', { responseType: 'blob' });
+  return response.data;
 }
 
 export default api;

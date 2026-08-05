@@ -17,15 +17,23 @@ function createResource(data) {
     data.name,
     data.category,
     data.department || null,
-    data.quantity || 0,
+    data.quantity || 1,
     data.lat || null,
     data.lng || null,
     data.status || 'available'
   );
 }
 
+function updateResourceStatus(id, status) {
+  const stmt = db.prepare(
+    `UPDATE resources SET status = ? WHERE id = ?`
+  );
+  return stmt.run(status, id);
+}
+
 module.exports = {
   listResources,
   listRainfallLogs,
-  createResource
+  createResource,
+  updateResourceStatus
 };
