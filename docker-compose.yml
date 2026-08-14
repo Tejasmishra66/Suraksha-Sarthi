@@ -2,17 +2,26 @@ version: '3.8'
 services:
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - '4000:4000'
     volumes:
-      - ./backend:/app/backend
+      - ./backend-data:/app/data
     environment:
       - PORT=4000
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-changeme_secure_secret}
+      - DB_CLIENT=sqlite
+      - DB_PATH=/app/data/sdrf.db
+    restart: always
+
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - '5173:3000'
+      - '80:3000'
     depends_on:
       - backend
+    restart: always
