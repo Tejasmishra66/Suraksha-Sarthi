@@ -222,12 +222,14 @@ async function sendSmsOTP(phone, otp) {
   }
 
   // Dev fallback — log OTP to console
-  console.log(`[OTP DEV] Phone: ${phone} → OTP: ${otp}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[OTP DEV] Phone: ${phone} → OTP: ${otp}`);
+  }
   return { sent: true, via: "console" };
 }
 
 // POST /auth/send-otp
-router.post("/send-otp", async (req, res) => {
+router.post("/send-otp", loginRateLimit, async (req, res) => {
   const { phone } = req.body;
   if (!phone || String(phone).trim().length < 10) {
     return res.status(400).json({ message: "A valid phone number is required" });
@@ -248,7 +250,7 @@ router.post("/send-otp", async (req, res) => {
 });
 
 // POST /auth/verify-otp
-router.post("/verify-otp", (req, res) => {
+router.post("/verify-otp", loginRateLimit, (req, res) => {
   const { phone, otp } = req.body;
   if (!phone || !otp) {
     return res.status(400).json({ message: "Phone and OTP are required" });
@@ -287,7 +289,7 @@ const signupSchema = z.object({
   district: z.string().optional().nullable(),
 });
 
-router.post("/signup", (req, res) => {
+router.post("/signup", loginRateLimit, (req, res) => {
   const validation = signupSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({ 

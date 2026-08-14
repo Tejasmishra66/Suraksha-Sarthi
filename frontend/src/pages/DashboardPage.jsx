@@ -12,7 +12,7 @@ import {
   fetchAuditLogs,
   exportIncidents,
   fetchResources,
-  broadcastVolunteerMessage
+  broadcastVolunteers
 } from '../api/client';
 
 import HpsdmaFeed from '../components/HpsdmaFeed';
@@ -137,7 +137,7 @@ export default function DashboardPage() {
     if (!broadcastMessage) return;
     setBroadcastStatus('Sending push notifications to all devices...');
     try {
-      await broadcastVolunteerMessage({ message: broadcastMessage });
+      await broadcastVolunteers({ message: broadcastMessage });
       setBroadcastStatus('Broadcast successfully delivered!');
       setBroadcastMessage('');
     } catch (err) {

@@ -4,20 +4,27 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const INSECURE_DEFAULTS = ["super_secret_change_me", "fallback_secret_key", "changeme", ""];
-const jwtSecret = process.env.JWT_SECRET || "fallback_secret_key";
+const jwtSecret = process.env.JWT_SECRET;
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
 
 // In production, a weak or missing JWT_SECRET makes every token forgeable.
 // Crash at startup rather than silently run insecure.
-if (process.env.NODE_ENV === "production" && INSECURE_DEFAULTS.includes(jwtSecret)) {
-  console.error("FATAL: JWT_SECRET is not set or is an insecure default. Set a strong secret in your .env file.");
-  process.exit(1);
+if (process.env.NODE_ENV === "production") {
+  if (!jwtSecret || INSECURE_DEFAULTS.includes(jwtSecret)) {
+    console.error("FATAL: JWT_SECRET is not set or is an insecure default. Set a strong secret in your .env file.");
+    process.exit(1);
+  }
+  if (!vapidPublicKey || !vapidPrivateKey || vapidPublicKey.startsWith("BPl-")) {
+    console.warn("WARNING: VAPID keys are missing or insecure. Push notifications may not work securely in production.");
+  }
 }
 
 module.exports = {
   port: Number(process.env.PORT || 4001),
-  jwtSecret,
-  vapidPublicKey: process.env.VAPID_PUBLIC_KEY || "BPl-...",
-  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || "...",
+  jwtSecret: jwtSecret, // Strict requirement, no dev fallback
+  vapidPublicKey: vapidPublicKey || "BPl-...", // Dev fallback only
+  vapidPrivateKey: vapidPrivateKey || "...", // Dev fallback only
   dbClient: process.env.DB_CLIENT || "sqlite",
   dbPath: path.resolve(process.cwd(), process.env.DB_PATH || "./data/sdrf.db"),
   postgresUrl: process.env.POSTGRES_URL || "",

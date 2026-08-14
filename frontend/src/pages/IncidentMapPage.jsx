@@ -35,7 +35,7 @@ function MapController({ center, zoom = 12 }) {
   return null;
 }
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002'}/hpsdma/incidents`;
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}/hpsdma/incidents`;
 const HIMACHAL_CENTER = [31.5, 77.2];
 const NAVY   = '#0F172A';
 const BLUE   = '#1D4ED8';

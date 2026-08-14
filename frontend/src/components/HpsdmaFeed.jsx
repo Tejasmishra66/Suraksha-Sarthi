@@ -12,7 +12,7 @@ import HealingRoundedIcon       from '@mui/icons-material/HealingRounded';
 import ErrorOutlineRoundedIcon  from '@mui/icons-material/ErrorOutlineRounded';
 import OpenInNewRoundedIcon     from '@mui/icons-material/OpenInNewRounded';
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002'}/hpsdma/incidents`;
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}/hpsdma/incidents`;
 
 const NAVY = '#0B2545';
 const RED  = '#C8102E';
@@ -33,7 +33,6 @@ const TYPE_META = {
   lightning:      { color: '#CA8A04', bg: '#FEFCE8', border: '#FDE047', emoji: '⚡' },
   'fallen tree':  { color: '#166534', bg: '#F0FDF4', border: '#86EFAC', emoji: '🌳' },
   'power outage': { color: '#374151', bg: '#F9FAFB', border: '#D1D5DB', emoji: '⚡' },
-  drowning:       { color: '#0369A1', bg: '#F0F9FF', border: '#7DD3FC', emoji: '💧' },
 };
 
 function getTypeMeta(type = '') {

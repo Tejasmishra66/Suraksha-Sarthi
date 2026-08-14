@@ -61,7 +61,7 @@ export default function UpdatesPage() {
       setBulletins(bData || []);
 
       // Fetch live HPSDMA incidents to act as real-time alerts
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002'}/hpsdma/incidents?limit=50`);
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/hpsdma/incidents?limit=50`);
       if (res.ok) {
         const hData = await res.json();
         const mappedAlerts = (hData.incidents || []).map(inc => {

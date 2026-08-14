@@ -75,7 +75,9 @@ async function dispatchSms(phone, message, options = {}) {
   }
 
   if (provider === "mock") {
-    console.log(`[SMS-MOCK] ${phone}: ${message}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[SMS-MOCK] ${phone}: ${message}`);
+    }
     return { provider: "mock", sent: true };
   }
 
@@ -117,7 +119,9 @@ function sendSms(phone, message) {
   }
 
   if (provider === "mock") {
-    console.log(`[SMS-MOCK] ${phone}: ${message}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[SMS-MOCK] ${phone}: ${message}`);
+    }
     return { provider: "mock", sent: true };
   }
 

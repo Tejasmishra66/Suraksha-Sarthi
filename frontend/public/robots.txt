@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /security-logs
+Disallow: /equipment
+
+Sitemap: https://suraksha-sarthi.hp.gov.in/sitemap.xml
