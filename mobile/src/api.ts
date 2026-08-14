@@ -1,8 +1,8 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-// Replaced automatically with your local network IP
-const API_BASE_URL = 'http://10.215.139.178:4002';
+// Machine's local network IP address - update this with your machine's IP if different
+const API_BASE_URL = 'http://10.137.94.239:4001';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

@@ -22,7 +22,9 @@ function createIncident(payload) {
     mediaTimestamp,
     mediaGps,
     officeTags,
-    offline = false
+    offline = false,
+    reporterPhone,
+    phone
   } = payload;
 
   if (!title || !disasterType || (lat == null && lng == null && !address)) {
@@ -48,7 +50,8 @@ function createIncident(payload) {
     mediaTimestamp: timestamp,
     mediaGps: gps,
     mediaRef: null,
-    officeTags
+    officeTags,
+    reporterPhone: reporterPhone || phone || null
   });
 
   if (offline) {

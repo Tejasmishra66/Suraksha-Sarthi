@@ -183,6 +183,90 @@ router.post("/create-user", auth, requireRole("admin"), (req, res) => {
   });
 });
 
+// ─── OTP Store (in-memory, per phone number) ─────────────────────────────────
+// Maps phone → { otp, expiresAt, verified }
+const otpStore = new Map();
+const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+
+function generateOTP() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+async function sendSmsOTP(phone, otp) {
+  const env = require("../config/env");
+
+  if (env.twilioEnabled && env.twilioAccountSid && env.twilioAuthToken) {
+    try {
+      const twilio = require("twilio");
+      const client = twilio(env.twilioAccountSid, env.twilioAuthToken);
+      await client.messages.create({
+        body: `Your Suraksha Sarthi OTP is: ${otp}. Valid for 10 minutes. Do not share with anyone.`,
+        from: env.twilioFrom,
+        to: phone,
+      });
+      return { sent: true, via: "twilio" };
+    } catch (err) {
+      console.error("[OTP] Twilio send failed:", err.message);
+      return { sent: false, error: err.message };
+    }
+  }
+
+  // Dev fallback — log OTP to console
+  console.log(`[OTP DEV] Phone: ${phone} → OTP: ${otp}`);
+  return { sent: true, via: "console" };
+}
+
+// POST /auth/send-otp
+router.post("/send-otp", async (req, res) => {
+  const { phone } = req.body;
+  if (!phone || String(phone).trim().length < 10) {
+    return res.status(400).json({ message: "A valid phone number is required" });
+  }
+
+  const normalizedPhone = String(phone).trim();
+  const otp = generateOTP();
+  const expiresAt = Date.now() + OTP_EXPIRY_MS;
+
+  otpStore.set(normalizedPhone, { otp, expiresAt, verified: false });
+
+  const result = await sendSmsOTP(normalizedPhone, otp);
+
+  return res.json({
+    message: "OTP sent successfully. Please check your phone.",
+    dev: result.via === "console" ? `[DEV MODE] OTP: ${otp}` : undefined,
+  });
+});
+
+// POST /auth/verify-otp
+router.post("/verify-otp", (req, res) => {
+  const { phone, otp } = req.body;
+  if (!phone || !otp) {
+    return res.status(400).json({ message: "Phone and OTP are required" });
+  }
+
+  const normalizedPhone = String(phone).trim();
+  const entry = otpStore.get(normalizedPhone);
+
+  if (!entry) {
+    return res.status(400).json({ message: "No OTP found for this number. Please request a new one." });
+  }
+
+  if (Date.now() > entry.expiresAt) {
+    otpStore.delete(normalizedPhone);
+    return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+  }
+
+  if (entry.otp !== String(otp).trim()) {
+    return res.status(400).json({ message: "Incorrect OTP. Please try again." });
+  }
+
+  // Mark phone as verified (so signup can proceed)
+  entry.verified = true;
+  otpStore.set(normalizedPhone, entry);
+
+  return res.json({ message: "Phone number verified successfully.", verified: true });
+});
+
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email format"),
@@ -203,6 +287,13 @@ router.post("/signup", (req, res) => {
   }
 
   const { name, email, password, phone, address, place, district } = validation.data;
+  const normalizedPhone = String(phone).trim();
+
+  // Require phone to be OTP-verified before creating account
+  const otpEntry = otpStore.get(normalizedPhone);
+  if (!otpEntry || !otpEntry.verified) {
+    return res.status(403).json({ message: "Phone number must be verified via OTP before registering." });
+  }
 
   const normalizedEmail = String(email).trim().toLowerCase();
   const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
@@ -224,11 +315,14 @@ router.post("/signup", (req, res) => {
       normalizedEmail,
       passwordHash,
       forcedRole,
-      phone ? String(phone).trim() : null,
+      normalizedPhone,
       address ? String(address).trim() : null,
       place ? String(place).trim() : null,
       district ? String(district).trim() : null
     );
+
+  // Clear the OTP entry after successful registration
+  otpStore.delete(normalizedPhone);
 
   return res.status(201).json({
     message: "Account created successfully. You can now log in.",

@@ -352,7 +352,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: '#FF7900',
     borderRadius: 30,
-    transition: 'bottom 0.3s',
   },
   bottomSheet: {
     position: 'absolute',

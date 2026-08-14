@@ -168,6 +168,12 @@ export async function createVolunteer(payload) {
 // Alias used by VolunteerPage
 export const registerVolunteer = createVolunteer;
 
+// Update volunteer approval status (admin only)
+export async function updateVolunteerStatus(volunteerId, status) {
+  const { data } = await api.patch(`/volunteers/${volunteerId}/status`, { status });
+  return data;
+}
+
 // Fetches resource availability and inventory data.
 export async function fetchResources() {
   const { data } = await api.get('/resources');
@@ -276,6 +282,16 @@ export async function fetchAuditLogs(office) {
 export async function exportIncidents() {
   const response = await api.get('/export/incidents', { responseType: 'blob' });
   return response.data;
+}
+
+export async function flushQueue() {
+  const { getQueue, clearQueue } = await import('../utils/offlineQueue');
+  const queue = getQueue();
+  if (!queue || queue.length === 0) return { syncedCount: 0 };
+
+  const { data } = await api.post('/sync/batch', { incidents: queue }, { timeout: 8000 });
+  clearQueue();
+  return data;
 }
 
 export default api;

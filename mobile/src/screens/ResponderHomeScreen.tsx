@@ -8,7 +8,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api';
+import OfflineQueueBanner from '../components/OfflineQueueBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +41,7 @@ const DISASTER_TYPES = [
 export default function ResponderHomeScreen() {
   const navigation = useNavigation<any>();
   const isFocused  = useIsFocused();
+  const { t }       = useTranslation();
 
   const [incidents,      setIncidents]      = useState<any[]>([]);
   const [hpsdmaStats,    setHpsdmaStats]    = useState<any>(null);
@@ -97,7 +100,7 @@ export default function ResponderHomeScreen() {
         <View style={styles.hero}>
           {/* Top bar */}
           <View style={styles.topBar}>
-            <TouchableOpacity style={styles.menuBtn}>
+            <TouchableOpacity style={styles.menuBtn} onPress={() => navigation.navigate('AdminMenu')}>
               <MaterialCommunityIcons name="menu" size={24} color={TEXT_PRI} />
             </TouchableOpacity>
             <View style={styles.topTitle}>
@@ -106,11 +109,13 @@ export default function ResponderHomeScreen() {
               </Text>
               <Text style={styles.brandTagline}>Safer Together, Stronger Together</Text>
             </View>
-            <TouchableOpacity style={styles.bellBtn}>
+            <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('AdminAlerts')}>
               <MaterialCommunityIcons name="bell-outline" size={22} color={TEXT_PRI} />
               <View style={styles.bellBadge}><Text style={styles.bellBadgeText}>3</Text></View>
             </TouchableOpacity>
           </View>
+
+          <OfflineQueueBanner />
 
           {/* Hero visual — light premium gradient */}
           <LinearGradient
@@ -148,9 +153,9 @@ export default function ResponderHomeScreen() {
         ═══════════════════════════════════════════════════════ */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>Live Disaster Overview</Text>
+            <Text style={styles.sectionTitle}>{t('disaster_overview', 'Live Disaster Overview')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Map')} style={styles.viewAllBtn}>
-              <Text style={styles.viewAllText}>View Map</Text>
+              <Text style={styles.viewAllText}>{t('map', 'View Map')}</Text>
               <MaterialCommunityIcons name="chevron-right" size={14} color={'#1D4ED8'} />
             </TouchableOpacity>
           </View>
@@ -169,6 +174,33 @@ export default function ResponderHomeScreen() {
         </View>
 
         {/* ═══════════════════════════════════════════════════════
+            VOLUNTEER JOIN REQUESTS & APPROVALS BANNER
+        ═══════════════════════════════════════════════════════ */}
+        <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+          <TouchableOpacity
+            style={styles.volBannerCard}
+            onPress={() => navigation.navigate('Volunteers')}
+            activeOpacity={0.88}
+          >
+            <LinearGradient colors={['#FFFBEB', '#FEF3C7']} style={styles.volBannerGradient}>
+              <View style={styles.volBannerIconCircle}>
+                <MaterialCommunityIcons name="account-check-outline" size={28} color="#D97706" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <Text style={styles.volBannerTitle}>VOLUNTEER JOIN REQUESTS</Text>
+                  <View style={styles.badgePill}>
+                    <Text style={styles.badgePillText}>ACTION REQ</Text>
+                  </View>
+                </View>
+                <Text style={styles.volBannerSub}>Review public role requests, verify Aadhaar photos & approve volunteers</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={22} color="#D97706" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {/* ═══════════════════════════════════════════════════════
             ACTION CARDS 2x2 GRID
         ═══════════════════════════════════════════════════════ */}
         <View style={styles.section}>
@@ -182,7 +214,7 @@ export default function ResponderHomeScreen() {
               <View style={[styles.cardIconCircle, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}>
                 <MaterialCommunityIcons name="alert-decagram" size={28} color="#DC2626" />
               </View>
-              <Text style={styles.cardTitle}>Report{'\n'}Emergency</Text>
+              <Text style={styles.cardTitle}>{t('report_disaster', 'Report Emergency')}</Text>
               <Text style={styles.cardDesc}>Report an incident with location &amp; files</Text>
               <View style={[styles.cardArrow, { backgroundColor: '#DC2626' }]}>
                 <MaterialCommunityIcons name="arrow-right" size={16} color="white" />
@@ -198,44 +230,30 @@ export default function ResponderHomeScreen() {
               <View style={[styles.cardIconCircle, { backgroundColor: '#DBEAFE', borderColor: '#93C5FD' }]}>
                 <MaterialCommunityIcons name="map-marker-radius" size={28} color="#2563EB" />
               </View>
-              <Text style={styles.cardTitle}>Live Map</Text>
+              <Text style={styles.cardTitle}>{t('map', 'Live Map')}</Text>
               <Text style={styles.cardDesc}>View live incidents and affected areas</Text>
               <View style={[styles.cardArrow, { backgroundColor: '#2563EB' }]}>
                 <MaterialCommunityIcons name="arrow-right" size={16} color="white" />
               </View>
             </TouchableOpacity>
 
-            {/* Volunteer Portal */}
+            {/* Volunteer Approvals */}
             <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
+              style={[styles.actionCard, { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}
               onPress={() => navigation.navigate('Volunteers')}
               activeOpacity={0.85}
             >
-              <View style={[styles.cardIconCircle, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
-                <MaterialCommunityIcons name="account-group" size={28} color="#16A34A" />
+              <View style={[styles.cardIconCircle, { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' }]}>
+                <MaterialCommunityIcons name="account-check" size={28} color="#D97706" />
               </View>
-              <Text style={styles.cardTitle}>Volunteer{'\n'}Portal</Text>
-              <Text style={styles.cardDesc}>Join, help and make a difference</Text>
-              <View style={[styles.cardArrow, { backgroundColor: '#16A34A' }]}>
+              <Text style={styles.cardTitle}>Volunteer{'\n'}Approvals</Text>
+              <Text style={styles.cardDesc}>Verify Aadhaar photos &amp; approve requests</Text>
+              <View style={[styles.cardArrow, { backgroundColor: '#D97706' }]}>
                 <MaterialCommunityIcons name="arrow-right" size={16} color="white" />
               </View>
             </TouchableOpacity>
 
-            {/* SDRF Operations */}
-            <TouchableOpacity
-              style={[styles.actionCard, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}
-              onPress={() => navigation.navigate('Board')}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.cardIconCircle, { backgroundColor: '#EDE9FE', borderColor: '#C4B5FD' }]}>
-                <MaterialCommunityIcons name="shield-star" size={28} color="#7C3AED" />
-              </View>
-              <Text style={styles.cardTitle}>SDRF{'\n'}Operations</Text>
-              <Text style={styles.cardDesc}>Secure command portal for SDRF personnel</Text>
-              <View style={[styles.cardArrow, { backgroundColor: '#7C3AED' }]}>
-                <MaterialCommunityIcons name="arrow-right" size={16} color="white" />
-              </View>
-            </TouchableOpacity>
+
           </View>
         </View>
 
@@ -385,6 +403,24 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: ACCENT, justifyContent: 'center', alignItems: 'center',
   },
+
+  // ── Volunteer Banner Card ───────────────────────────────────
+  volBannerCard: {
+    borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: '#FDE68A',
+    elevation: 3, shadowColor: '#D97706', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15,
+  },
+  volBannerGradient: {
+    flexDirection: 'row', alignItems: 'center', padding: 14,
+  },
+  volBannerIconCircle: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  volBannerTitle: { fontSize: 13, fontWeight: '900', color: '#92400E', letterSpacing: 0.5 },
+  volBannerSub: { fontSize: 11, color: '#B45309', marginTop: 2, lineHeight: 15 },
+  badgePill: { backgroundColor: '#F59E0B', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  badgePillText: { color: 'white', fontSize: 9, fontWeight: '900' },
 
   // ── Section ──────────────────────────────────────────────────
   section: { paddingHorizontal: 16, marginBottom: 20 },

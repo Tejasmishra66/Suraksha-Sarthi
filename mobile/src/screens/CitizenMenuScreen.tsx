@@ -11,20 +11,19 @@ import { useTranslation } from 'react-i18next';
 import i18n, { changeAppLanguage } from '../i18n';
 import { useIsFocused } from '@react-navigation/native';
 
-const NAVY = '#0F2942';
-const BLUE = '#1D4ED8';
-const DARK_BLUE = '#0F172A';
-const ORANGE = '#FF6600';
-const RED = '#DC2626';
-const GREEN = '#059669';
+const GOV_BLUE      = '#003087';
+const GOV_BLUE_DARK = '#001F5C';
+const GOV_ORANGE    = '#FF6600';
+const GOV_RED       = '#CC0000';
+const GOV_GREEN     = '#007A3D';
 
-export default function MenuScreen({ navigation }: any) {
+export default function CitizenMenuScreen({ navigation }: any) {
   const theme = useTheme();
   const { t } = useTranslation();
   const isFocused = useIsFocused();
 
-  const [userName, setUserName] = useState('Officer Command');
-  const [userRole, setUserRole] = useState('admin');
+  const [userName, setUserName] = useState('Citizen');
+  const [userPhone, setUserPhone] = useState('');
   const [showHelplines, setShowHelplines] = useState(false);
 
   useEffect(() => {
@@ -35,15 +34,15 @@ export default function MenuScreen({ navigation }: any) {
 
   const loadUserInfo = async () => {
     const name = await SecureStore.getItemAsync('userName');
-    const role = await SecureStore.getItemAsync('userRole');
+    const phone = await SecureStore.getItemAsync('userPhone');
     if (name) setUserName(name);
-    if (role) setUserRole(role);
+    if (phone) setUserPhone(phone);
   };
 
   const handleLogout = async () => {
     Alert.alert(
       t('logout', 'Logout Confirmation'),
-      'Are you sure you want to log out from Officer Command Portal?',
+      'Are you sure you want to log out from the Citizen Portal?',
       [
         { text: t('cancel', 'Cancel'), style: 'cancel' },
         {
@@ -63,18 +62,14 @@ export default function MenuScreen({ navigation }: any) {
 
   const callNumber = (phone: string) => {
     Linking.openURL(`tel:${phone}`).catch(() => {
-      Alert.alert(t('error', 'Error'), 'Unable to initiate call');
+      Alert.alert(t('error', 'Error'), 'Unable to initiate phone call');
     });
   };
 
-  const CommandItem = ({ icon, title, subtitle, route, color, bg, badge }: any) => (
-    <TouchableOpacity
-      style={styles.menuCard}
-      onPress={() => navigation.navigate(route)}
-      activeOpacity={0.8}
-    >
-      <View style={[styles.iconContainer, { backgroundColor: bg || ((color || BLUE) + '15') }]}>
-        <MaterialCommunityIcons name={icon} size={24} color={color || BLUE} />
+  const MenuItem = ({ icon, title, subtitle, onPress, badge, color }: any) => (
+    <TouchableOpacity style={styles.menuCard} onPress={onPress} activeOpacity={0.8}>
+      <View style={[styles.iconContainer, { backgroundColor: (color || GOV_BLUE) + '15' }]}>
+        <MaterialCommunityIcons name={icon} size={24} color={color || GOV_BLUE} />
       </View>
       <View style={styles.menuText}>
         <View style={styles.titleRow}>
@@ -93,28 +88,26 @@ export default function MenuScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+      <StatusBar barStyle="light-content" backgroundColor={GOV_BLUE_DARK} />
 
-      {/* ── Officer Command Header ───────────────────────────────── */}
-      <LinearGradient colors={['#0F172A', '#1E293B']} style={styles.headerGradient}>
+      {/* ── Top Header ────────────────────────────────────────── */}
+      <LinearGradient colors={[GOV_BLUE_DARK, GOV_BLUE]} style={styles.headerGradient}>
         <View style={styles.govBanner}>
-          <MaterialCommunityIcons name="shield-star" size={18} color={ORANGE} />
-          <Text style={styles.govBannerText}>SDRF · COMMAND & CONTROL HEADQUARTERS</Text>
-          <MaterialCommunityIcons name="shield-star" size={18} color={ORANGE} />
+          <MaterialCommunityIcons name="star-circle" size={16} color={GOV_ORANGE} />
+          <Text style={styles.govBannerText}>SDRF · Himachal Pradesh</Text>
+          <MaterialCommunityIcons name="star-circle" size={16} color={GOV_ORANGE} />
         </View>
 
         <View style={styles.profileRow}>
           <View style={styles.avatarCircle}>
-            <MaterialCommunityIcons name="account-tie" size={36} color="white" />
+            <MaterialCommunityIcons name="account" size={36} color="white" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.profileName} numberOfLines={1}>{userName}</Text>
-            <Text style={styles.profileRoleText}>{t('command_subtitle', 'HP SDRF Command Division')}</Text>
+            <Text style={styles.profilePhone}>{userPhone ? `+91 ${userPhone}` : 'Verified Citizen'}</Text>
             <View style={styles.roleBadge}>
-              <MaterialCommunityIcons name="shield-check" size={12} color="#FBBF24" />
-              <Text style={styles.roleBadgeText}>
-                {userRole === 'agency_head' ? 'AGENCY HEAD / DIRECTOR' : 'COMMAND OFFICER'}
-              </Text>
+              <MaterialCommunityIcons name="shield-check" size={12} color="#4ADE80" />
+              <Text style={styles.roleBadgeText}>{t('citizen_portal', 'CITIZEN / VOLUNTEER')}</Text>
             </View>
           </View>
         </View>
@@ -122,77 +115,44 @@ export default function MenuScreen({ navigation }: any) {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* ── Section: Command & Emergency Features ───────────────── */}
-        <Text style={styles.sectionTitle}>{t('command_center', 'Command Operations')}</Text>
+        {/* ── Main Menu Section ─────────────────────────────────── */}
+        <Text style={styles.sectionTitle}>{t('quick_actions', 'Main Services')}</Text>
 
-
-
-        <CommandItem
-          icon="alert-decagram"
-          title={t('report_disaster', 'Report Emergency Incident')}
-          subtitle="File new emergency dispatch with media & location pins"
-          color={RED}
-          bg="#FEF2F2"
-          route="ReportEmergency"
+        <MenuItem
+          icon="account-hard-hat"
+          title={t('volunteer_skills', 'Volunteer Portal & Skills')}
+          subtitle={t('volunteer_sub', 'Register skills, Aadhaar & certifications for emergency dispatch')}
+          color={GOV_GREEN}
+          badge={{ text: 'JOIN NOW', bg: '#DCFCE7', color: GOV_GREEN }}
+          onPress={() => navigation.navigate('CitizenVolunteer')}
         />
 
-        <CommandItem
-          icon="map-marker-radius"
-          title={t('map', 'Live Emergency GIS Map')}
-          subtitle="Real-time disaster map & affected zone radiuses"
-          color="#2563EB"
-          bg="#EFF6FF"
-          route="Map"
-        />
-
-        <CommandItem
-          icon="tools"
-          title={t('equipment_catalog', 'Equipment & Fleet Inventory')}
-          subtitle="Resource catalog, availability & location tracking"
-          color="#059669"
-          bg="#ECFDF5"
-          route="AdminResources"
-        />
-
-        <CommandItem
-          icon="account-group"
-          title="Volunteer Join Requests & Approval"
-          subtitle="Review public role volunteer applications, verify Aadhaar photos & approve/reject"
-          color="#D97706"
-          bg="#FFFBEB"
-          badge={{ text: 'ACTION REQ', bg: '#FEF3C7', color: '#D97706' }}
-          route="Volunteers"
-        />
-
-        <CommandItem
-          icon="qrcode-scan"
-          title={t('scan_qr', 'Equipment QR Code Scanner')}
-          subtitle="Scan asset QR tags for transfer & dispatch log"
-          color="#0284C7"
-          bg="#F0F9FF"
-          route="Scanner"
-        />
-
-        <CommandItem
+        <MenuItem
           icon="newspaper"
           title={t('bulletins', 'Official SDRF Bulletins')}
-          subtitle={t('recent_directives', 'Publish weather advisories and official directives')}
+          subtitle={t('recent_directives', 'Read live emergency advisories and weather alerts')}
           color="#2563EB"
-          bg="#EFF6FF"
-          route="Updates"
+          onPress={() => navigation.navigate('Updates')}
         />
 
-        <CommandItem
+        <MenuItem
           icon="book-open-page-variant"
-          title={t('guides', 'Emergency Survival SOPs')}
-          subtitle="Operational disaster guidelines & protocols"
+          title={t('guides', 'Emergency Survival Guides')}
+          subtitle="SOPs & first aid guidelines for floods & landslides"
           color="#7C3AED"
-          bg="#F5F3FF"
-          route="Guides"
+          onPress={() => navigation.navigate('Guides')}
         />
 
-        {/* ── Section: Command Control Room Contacts ─────────────── */}
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>{t('emergency_helplines', 'Command Control Contacts')}</Text>
+        <MenuItem
+          icon="map-search"
+          title={t('map', 'Live Emergency Map')}
+          subtitle="Track active disaster pins across Himachal Pradesh"
+          color="#D97706"
+          onPress={() => navigation.navigate('CitizenMap')}
+        />
+
+        {/* ── Emergency Helplines Section ───────────────────────── */}
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>{t('emergency_helplines', 'Emergency Helplines')}</Text>
 
         <Surface style={styles.cardSurface} elevation={1}>
           <TouchableOpacity
@@ -201,11 +161,11 @@ export default function MenuScreen({ navigation }: any) {
             activeOpacity={0.7}
           >
             <View style={[styles.iconContainer, { backgroundColor: '#FEE2E2' }]}>
-              <MaterialCommunityIcons name="phone-classic" size={24} color={RED} />
+              <MaterialCommunityIcons name="phone-classic" size={24} color={GOV_RED} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.menuTitle}>{t('emergency_helplines', 'State Control Room Hotlines')}</Text>
-              <Text style={styles.menuSubtitle}>SDRF HQ 1070, ERSS 112, Police & Rescue</Text>
+              <Text style={styles.menuTitle}>{t('emergency_helplines', 'Disaster & Emergency Contacts')}</Text>
+              <Text style={styles.menuSubtitle}>SDRF Control Room, Police, Ambulance & Fire</Text>
             </View>
             <MaterialCommunityIcons
               name={showHelplines ? 'chevron-up' : 'chevron-down'}
@@ -218,18 +178,26 @@ export default function MenuScreen({ navigation }: any) {
             <View style={styles.helplineList}>
               <TouchableOpacity style={styles.helplineRow} onPress={() => callNumber('1070')}>
                 <View style={styles.helplineInfo}>
-                  <Text style={styles.helplineName}>{t('sdrf_control', 'HP SDRF State Control Room')}</Text>
+                  <Text style={styles.helplineName}>{t('sdrf_control', 'HP State Disaster Management')}</Text>
                   <Text style={styles.helplineNumber}>1070 (Toll Free)</Text>
                 </View>
-                <MaterialCommunityIcons name="phone" size={20} color={GREEN} />
+                <MaterialCommunityIcons name="phone" size={20} color={GOV_GREEN} />
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.helplineRow} onPress={() => callNumber('112')}>
                 <View style={styles.helplineInfo}>
-                  <Text style={styles.helplineName}>{t('national_helpline', 'Emergency Response Support System')}</Text>
+                  <Text style={styles.helplineName}>{t('national_helpline', 'National Emergency Helpline')}</Text>
                   <Text style={styles.helplineNumber}>112</Text>
                 </View>
-                <MaterialCommunityIcons name="phone" size={20} color={GREEN} />
+                <MaterialCommunityIcons name="phone" size={20} color={GOV_GREEN} />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.helplineRow} onPress={() => callNumber('108')}>
+                <View style={styles.helplineInfo}>
+                  <Text style={styles.helplineName}>{t('ambulance', 'Medical Ambulance Service')}</Text>
+                  <Text style={styles.helplineNumber}>108</Text>
+                </View>
+                <MaterialCommunityIcons name="phone" size={20} color={GOV_GREEN} />
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.helplineRow} onPress={() => callNumber('101')}>
@@ -237,18 +205,18 @@ export default function MenuScreen({ navigation }: any) {
                   <Text style={styles.helplineName}>{t('fire', 'Fire Rescue Command')}</Text>
                   <Text style={styles.helplineNumber}>101</Text>
                 </View>
-                <MaterialCommunityIcons name="phone" size={20} color={GREEN} />
+                <MaterialCommunityIcons name="phone" size={20} color={GOV_GREEN} />
               </TouchableOpacity>
             </View>
           )}
         </Surface>
 
-        {/* ── Section: App Settings ──────────────────────────────── */}
+        {/* ── Settings & Language ──────────────────────────────── */}
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>{t('settings', 'App Settings')}</Text>
 
         <Surface style={styles.cardSurface} elevation={1}>
           <View style={styles.settingsHeader}>
-            <MaterialCommunityIcons name="translate" size={22} color={BLUE} />
+            <MaterialCommunityIcons name="translate" size={22} color={GOV_BLUE} />
             <Text style={styles.settingsTitle}>{t('language', 'App Language / भाषा')}</Text>
           </View>
           <View style={styles.languageToggle}>
@@ -256,7 +224,7 @@ export default function MenuScreen({ navigation }: any) {
               mode={i18n.language === 'en' ? 'contained' : 'outlined'}
               onPress={() => changeAppLanguage('en')}
               style={styles.langBtn}
-              buttonColor={i18n.language === 'en' ? BLUE : undefined}
+              buttonColor={i18n.language === 'en' ? GOV_BLUE : undefined}
             >
               {t('english', 'English')}
             </Button>
@@ -264,22 +232,22 @@ export default function MenuScreen({ navigation }: any) {
               mode={i18n.language === 'hi' ? 'contained' : 'outlined'}
               onPress={() => changeAppLanguage('hi')}
               style={styles.langBtn}
-              buttonColor={i18n.language === 'hi' ? BLUE : undefined}
+              buttonColor={i18n.language === 'hi' ? GOV_BLUE : undefined}
             >
               {t('hindi', 'हिन्दी (Hindi)')}
             </Button>
           </View>
         </Surface>
 
-        {/* ── Section: Logout ───────────────────────────────────── */}
+        {/* ── Logout Button ────────────────────────────────────── */}
         <TouchableOpacity style={styles.logoutCard} onPress={handleLogout} activeOpacity={0.8}>
-          <MaterialCommunityIcons name="logout" size={22} color={RED} />
-          <Text style={styles.logoutText}>{t('logout', 'Logout from Command Portal')}</Text>
+          <MaterialCommunityIcons name="logout" size={22} color={GOV_RED} />
+          <Text style={styles.logoutText}>{t('logout', 'Logout from Citizen Portal')}</Text>
         </TouchableOpacity>
 
         <Text style={styles.appFooterText}>
-          Suraksha Sarthi v2.0 · HP SDRF Command Center{'\n'}
-          Official State Emergency Management Platform
+          Suraksha Sarthi v2.0 · HP SDRF Citizen Command{'\n'}
+          Official State Emergency Response System
         </Text>
       </ScrollView>
     </View>
@@ -287,7 +255,7 @@ export default function MenuScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F4F6FB' },
+  container: { flex: 1, backgroundColor: '#F0F4FF' },
 
   headerGradient: {
     paddingHorizontal: 20,
@@ -300,24 +268,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 6, marginBottom: 16,
   },
-  govBannerText: { color: 'white', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  govBannerText: { color: 'white', fontSize: 11, fontWeight: '800', letterSpacing: 0.8 },
 
   profileRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatarCircle: {
     width: 60, height: 60, borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)',
   },
   profileName: { color: 'white', fontSize: 20, fontWeight: '900' },
-  profileRoleText: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 1 },
+  profilePhone: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 1 },
   roleBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     paddingHorizontal: 8, paddingVertical: 3,
     borderRadius: 12, marginTop: 6, alignSelf: 'flex-start',
   },
-  roleBadgeText: { color: '#FBBF24', fontSize: 9, fontWeight: '800', letterSpacing: 0.6 },
+  roleBadgeText: { color: '#4ADE80', fontSize: 9, fontWeight: '800', letterSpacing: 0.6 },
 
   scrollContent: { padding: 16, paddingBottom: 100 },
 
@@ -359,7 +327,7 @@ const styles = StyleSheet.create({
   },
   helplineInfo: { flex: 1 },
   helplineName: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
-  helplineNumber: { fontSize: 12, color: BLUE, fontWeight: '800', marginTop: 1 },
+  helplineNumber: { fontSize: 12, color: GOV_BLUE, fontWeight: '800', marginTop: 1 },
 
   settingsHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 10 },
   settingsTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
@@ -372,7 +340,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14, marginTop: 14,
     borderWidth: 1.5, borderColor: '#FCA5A5',
   },
-  logoutText: { color: RED, fontSize: 15, fontWeight: '800' },
+  logoutText: { color: GOV_RED, fontSize: 15, fontWeight: '800' },
 
   appFooterText: {
     textAlign: 'center', fontSize: 10, color: '#94A3B8', marginTop: 24, lineHeight: 16,

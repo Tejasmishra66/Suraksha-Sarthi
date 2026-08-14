@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Container, Grid, Typography, Button, Divider, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Avatar
+  TableContainer, TableHead, TableRow, Avatar, Chip, Tooltip, IconButton,
+  CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 // Icons
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
@@ -26,7 +28,13 @@ import Diversity1RoundedIcon from '@mui/icons-material/Diversity1Rounded';
 import LibraryBooksRoundedIcon from '@mui/icons-material/LibraryBooksRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 
-import { fetchVolunteers } from '../api/client';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+
+import { fetchVolunteers, updateVolunteerStatus } from '../api/client';
 
 const NAVY = '#0B2545';
 const BLUE = '#1D4ED8';
@@ -55,18 +63,59 @@ const EVENTS = [
 ];
 
 export default function VolunteerPage() {
-  const [volunteers, setVolunteers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'agency_head';
 
-  useEffect(() => {
+  const [volunteers, setVolunteers]     = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [actionLoading, setActionLoading] = useState(null); // volunteerId being updated
+
+  const loadVolunteers = useCallback(() => {
+    setLoading(true);
     fetchVolunteers()
-      .then((d) => setVolunteers(d || []))
+      .then((d) => setVolunteers(Array.isArray(d) ? d : (d?.data || [])))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const totalVolunteers = volunteers.length;
-  const activeVolunteers = volunteers.filter(v => v.active).length;
+  useEffect(() => { loadVolunteers(); }, [loadVolunteers]);
+
+  const handleStatusUpdate = async (volunteerId, newStatus) => {
+    setActionLoading(volunteerId);
+    try {
+      await updateVolunteerStatus(volunteerId, newStatus);
+      setVolunteers(prev =>
+        prev.map(v => v.id === volunteerId ? { ...v, status: newStatus } : v)
+      );
+    } catch (e) {
+      alert('Failed to update status: ' + (e?.response?.data?.message || e.message));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const totalVolunteers   = volunteers.length;
+  const activeVolunteers  = volunteers.filter(v => v.active).length;
+  const pendingCount      = volunteers.filter(v => !v.status || v.status === 'pending').length;
+  const approvedCount     = volunteers.filter(v => v.status === 'approved').length;
+
+  const filteredVolunteers = statusFilter === 'all'
+    ? volunteers
+    : volunteers.filter(v => {
+        const s = v.status || 'pending';
+        return s === statusFilter;
+      });
+
+  // Helper: mask Aadhaar
+  const maskAadhaar = (a) => a ? '••••-••••-' + String(a).slice(-4) : '—';
+
+  // Status chip config
+  const statusConfig = {
+    pending:  { color: '#D97706', bg: '#FEF3C7', border: '#FDE68A', label: 'Pending' },
+    approved: { color: '#059669', bg: '#D1FAE5', border: '#6EE7B7', label: 'Approved' },
+    rejected: { color: '#DC2626', bg: '#FEE2E2', border: '#FCA5A5', label: 'Rejected' },
+  };
 
   return (
     <Box sx={{ bgcolor: '#F8FAFC', minHeight: 'calc(100vh - 66px)', display: 'flex', flexDirection: 'column' }}>
@@ -185,11 +234,49 @@ export default function VolunteerPage() {
               ))}
             </Grid>
 
-            {/* Recent Volunteers */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography sx={{ fontSize: '1.1rem', fontWeight: 900, color: NAVY }}>Recent Volunteers</Typography>
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: BLUE, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>View All Volunteers</Typography>
+            {/* ── ADMIN VOLUNTEER MANAGEMENT ── */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, mt: 2 }}>
+              <Box>
+                <Typography sx={{ fontSize: '1.1rem', fontWeight: 900, color: NAVY }}>Volunteer Applications</Typography>
+                {pendingCount > 0 && (
+                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#D97706' }}>
+                    {pendingCount} pending approval{pendingCount > 1 ? 's' : ''}
+                  </Typography>
+                )}
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Tooltip title="Refresh">
+                  <IconButton size="small" onClick={loadVolunteers} disabled={loading}>
+                    <RefreshRoundedIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
+
+            {/* Status Filter Chips */}
+            <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+              {[
+                { key: 'all',      label: `All (${volunteers.length})`,      color: NAVY },
+                { key: 'pending',  label: `Pending (${pendingCount})`,        color: '#D97706' },
+                { key: 'approved', label: `Approved (${approvedCount})`,      color: '#059669' },
+                { key: 'rejected', label: `Rejected (${volunteers.filter(v => v.status === 'rejected').length})`, color: '#DC2626' },
+              ].map(f => (
+                <Chip
+                  key={f.key}
+                  label={f.label}
+                  onClick={() => setStatusFilter(f.key)}
+                  variant={statusFilter === f.key ? 'filled' : 'outlined'}
+                  sx={{
+                    fontWeight: 800, fontSize: '0.72rem',
+                    bgcolor: statusFilter === f.key ? f.color : 'transparent',
+                    color: statusFilter === f.key ? 'white' : f.color,
+                    borderColor: f.color,
+                    '&:hover': { bgcolor: f.color + '22' },
+                  }}
+                />
+              ))}
+            </Box>
+
             <Box sx={{ bgcolor: '#FFF', borderRadius: 3, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
               <TableContainer>
                 <Table size="small">
@@ -198,35 +285,116 @@ export default function VolunteerPage() {
                       <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>NAME</TableCell>
                       <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>LOCATION</TableCell>
                       <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>SKILLS</TableCell>
-                      <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>JOINED ON</TableCell>
+                      <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>AADHAAR</TableCell>
+                      <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>CERT.</TableCell>
+                      <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>JOINED</TableCell>
                       <TableCell align="center" sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>STATUS</TableCell>
+                      {isAdmin && <TableCell align="center" sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>ACTIONS</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {volunteers.map(v => ({ 
-                      name: v.name, 
-                      loc: v.place || v.district || 'Unknown', 
-                      skills: v.capabilities || v.skills || 'General', 
-                      date: new Date(v.created_at || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/,/g, ''), 
-                      status: v.active ? 'Active' : 'Inactive' 
-                    })).slice(0, 5).map((row, i) => (
-                      <TableRow key={i} sx={{ '&:last-child td, &:last-child th': { border: 0 }, '&:hover': { bgcolor: '#F8FAFC' } }}>
-                        <TableCell sx={{ py: 1.5 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Avatar sx={{ width: 26, height: 26, bgcolor: BLUE, fontSize: '0.75rem', fontWeight: 700 }}>{row.name.charAt(0)}</Avatar>
-                            <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: NAVY }}>{row.name}</Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>{row.loc}</TableCell>
-                        <TableCell>
-                          <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: BLUE, bgcolor: LIGHT_BLUE, display: 'inline-block', px: 1, py: 0.3, borderRadius: 1 }}>{row.skills}</Typography>
-                        </TableCell>
-                        <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>{row.date}</TableCell>
-                        <TableCell align="center">
-                          <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: row.status === 'Active' ? '#10B981' : '#64748B' }}>{row.status}</Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {loading ? (
+                      <TableRow><TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                        <CircularProgress size={24} />
+                      </TableCell></TableRow>
+                    ) : filteredVolunteers.length === 0 ? (
+                      <TableRow><TableCell colSpan={8} align="center" sx={{ py: 4, color: '#94A3B8', fontWeight: 600, fontSize: '0.8rem' }}>
+                        No volunteers found for this filter.
+                      </TableCell></TableRow>
+                    ) : filteredVolunteers.map((v) => {
+                      const vStatus = v.status || 'pending';
+                      const sc = statusConfig[vStatus] || statusConfig.pending;
+                      const skills = (v.skills || v.capabilities || '').split(',').filter(Boolean);
+                      return (
+                        <TableRow key={v.id} sx={{ '&:last-child td': { border: 0 }, '&:hover': { bgcolor: '#F8FAFC' } }}>
+                          <TableCell sx={{ py: 1.5 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                              <Avatar sx={{ width: 28, height: 28, bgcolor: BLUE, fontSize: '0.8rem', fontWeight: 700 }}>
+                                {v.name?.charAt(0)}
+                              </Avatar>
+                              <Box>
+                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: NAVY }}>{v.name}</Typography>
+                                <Typography sx={{ fontSize: '0.7rem', color: '#64748B' }}>{v.phone}</Typography>
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>
+                            {v.place || v.district || '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.4 }}>
+                              {skills.slice(0, 3).map((s, i) => (
+                                <Typography key={i} sx={{ fontSize: '0.62rem', fontWeight: 700, color: BLUE, bgcolor: LIGHT_BLUE, px: 0.8, py: 0.2, borderRadius: 0.8, display: 'inline-block' }}>
+                                  {s.trim()}
+                                </Typography>
+                              ))}
+                              {skills.length > 3 && (
+                                <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748B' }}>+{skills.length - 3}</Typography>
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B', fontFamily: 'monospace' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              {v.aadhaar && <BadgeRoundedIcon sx={{ fontSize: 14, color: '#059669' }} />}
+                              {maskAadhaar(v.aadhaar)}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            {v.certification_url ? (
+                              <Tooltip title="View Certification">
+                                <IconButton size="small" onClick={() => window.open(v.certification_url, '_blank')}>
+                                  <OpenInNewRoundedIcon sx={{ fontSize: 16, color: BLUE }} />
+                                </IconButton>
+                              </Tooltip>
+                            ) : <Typography sx={{ fontSize: '0.7rem', color: '#CBD5E1' }}>—</Typography>}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748B' }}>
+                            {new Date(v.created_at || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{
+                              display: 'inline-flex', alignItems: 'center', gap: 0.4,
+                              px: 1.2, py: 0.4, borderRadius: 10,
+                              bgcolor: sc.bg, border: `1px solid ${sc.border}`,
+                            }}>
+                              <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: sc.color }}>
+                                {sc.label.toUpperCase()}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          {isAdmin && (
+                            <TableCell align="center">
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                                {vStatus !== 'approved' && (
+                                  <Tooltip title="Approve">
+                                    <IconButton
+                                      size="small"
+                                      disabled={actionLoading === v.id}
+                                      onClick={() => handleStatusUpdate(v.id, 'approved')}
+                                      sx={{ color: '#059669', bgcolor: '#D1FAE5', '&:hover': { bgcolor: '#A7F3D0' }, borderRadius: 1.5, p: 0.6 }}
+                                    >
+                                      {actionLoading === v.id ? <CircularProgress size={14} /> : <CheckCircleRoundedIcon sx={{ fontSize: 16 }} />}
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                                {vStatus !== 'rejected' && (
+                                  <Tooltip title="Reject">
+                                    <IconButton
+                                      size="small"
+                                      disabled={actionLoading === v.id}
+                                      onClick={() => handleStatusUpdate(v.id, 'rejected')}
+                                      sx={{ color: '#DC2626', bgcolor: '#FEE2E2', '&:hover': { bgcolor: '#FECACA' }, borderRadius: 1.5, p: 0.6 }}
+                                    >
+                                      <CancelRoundedIcon sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                              </Box>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>

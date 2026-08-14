@@ -20,17 +20,18 @@ function processQueueItem(item) {
   if (item.entity_type === "incident" && item.operation === "create") {
     db.prepare(
       `INSERT INTO incidents
-       (title, description, disaster_type, lat, lng, status, agency_assigned, verification_state)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+       (title, description, disaster_type, lat, lng, address, status, agency_assigned, verification_state, reporter_phone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Unverified', ?)`
     ).run(
       payload.title,
       payload.description || "",
-      payload.disasterType,
+      payload.disasterType || payload.disaster_type,
       payload.lat,
-      payload.lng,
-      payload.status || "New",
+      payload.lng || payload.lon,
+      payload.address || null,
+      payload.status || "active",
       payload.agencyAssigned || null,
-      payload.verificationState || "Unverified"
+      payload.reporterPhone || payload.phone || null
     );
   }
 

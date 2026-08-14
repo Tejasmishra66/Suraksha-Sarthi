@@ -58,13 +58,29 @@ function runMigrations() {
   ensureColumn("users", "place", "place TEXT");
   ensureColumn("users", "district", "district TEXT");
   ensureColumn("volunteers", "place", "place TEXT");
+  ensureColumn("volunteers", "skills", "skills TEXT");
+  ensureColumn("volunteers", "aadhaar", "aadhaar TEXT");
+  ensureColumn("volunteers", "certification_url", "certification_url TEXT");
+  ensureColumn("volunteers", "aadhaar_front_url", "aadhaar_front_url TEXT");
+  ensureColumn("volunteers", "aadhaar_back_url", "aadhaar_back_url TEXT");
+  ensureColumn("volunteers", "district", "district TEXT");
+  ensureColumn("volunteers", "user_id", "user_id INTEGER");
+  ensureColumn("volunteers", "status", "status TEXT DEFAULT 'pending'");
   ensureColumn("tasks", "notification_agencies", "notification_agencies TEXT");
   
   ensureColumn("incidents", "office_tags", "office_tags TEXT");
+  ensureColumn("incidents", "reporter_phone", "reporter_phone TEXT");
   ensureColumn("tasks", "office_tags", "office_tags TEXT");
   ensureColumn("bulletins", "office_tags", "office_tags TEXT");
   ensureColumn("alerts", "office_tags", "office_tags TEXT");
   ensureColumn("intel_pins", "office_tags", "office_tags TEXT");
+
+  ensureColumn("equipment", "department", "department TEXT");
+  ensureColumn("equipment", "quantity", "quantity INTEGER DEFAULT 1");
+  ensureColumn("equipment", "place", "place TEXT");
+  ensureColumn("equipment", "maintenance_reason", "maintenance_reason TEXT");
+  ensureColumn("equipment_transfers", "sender_hq", "sender_hq TEXT");
+  ensureColumn("equipment_transfers", "receiver_hq", "receiver_hq TEXT");
 
   seedAgencyHeadPhones();
 
@@ -130,6 +146,44 @@ function runMigrations() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  seedDemoEquipment();
+}
+
+function seedDemoEquipment() {
+  try {
+    const count = db.prepare("SELECT COUNT(*) as cnt FROM equipment").get();
+    if (count && count.cnt >= 5) {
+      return;
+    }
+
+    const demoItems = [
+      { qr_code: 'EQ-1001', name: 'Inflatable Rescue Boat (IRB 40HP)', category: 'Rescue Gear', department: 'SDRF Shimla HQ', quantity: 3, place: 'Shimla HQ', status: 'available', lat: 31.1048, lng: 77.1734 },
+      { qr_code: 'EQ-1002', name: 'Stihl MS-382 Heavy Duty Chainsaw', category: 'Rescue Gear', department: 'SDRF Shimla HQ', quantity: 6, place: 'Shimla HQ', status: 'available', lat: 31.1048, lng: 77.1734 },
+      { qr_code: 'EQ-1003', name: 'High-Capacity Sludge Water Pump 10HP', category: 'Rescue Gear', department: 'SDRF Shimla HQ', quantity: 4, place: 'Shimla HQ', status: 'available', lat: 31.1048, lng: 77.1734 },
+      { qr_code: 'EQ-1004', name: 'ISATPhone Satellite Communication Set', category: 'Communication', department: 'SDRF Shimla HQ', quantity: 2, place: 'Shimla HQ', status: 'available', lat: 31.1048, lng: 77.1734 },
+      { qr_code: 'EQ-2001', name: 'Hydraulic Cutter & Spreader Rescue Kit', category: 'Rescue Gear', department: 'SDRF Mandi HQ', quantity: 2, place: 'Mandi HQ', status: 'available', lat: 31.7084, lng: 76.9320 },
+      { qr_code: 'EQ-2002', name: 'Emergency Trauma & First Aid Kit (Level 3)', category: 'Medical', department: 'SDRF Mandi HQ', quantity: 10, place: 'Mandi HQ', status: 'available', lat: 31.7084, lng: 76.9320 },
+      { qr_code: 'EQ-2003', name: 'Portable Silent Diesel Generator 5kW', category: 'Power & Light', department: 'SDRF Mandi HQ', quantity: 5, place: 'Mandi HQ', status: 'available', lat: 31.7084, lng: 76.9320 },
+      { qr_code: 'EQ-2004', name: 'All-Terrain 4x4 Disaster Rescue Vehicle', category: 'Vehicles', department: 'SDRF Mandi HQ', quantity: 2, place: 'Mandi HQ', status: 'available', lat: 31.7084, lng: 76.9320 },
+      { qr_code: 'EQ-3001', name: 'SCUBA Deep Diving & Rescue Apparatus', category: 'Rescue Gear', department: 'SDRF Kangra HQ', quantity: 4, place: 'Kangra HQ', status: 'available', lat: 32.2190, lng: 76.3234 },
+      { qr_code: 'EQ-3002', name: 'High-Altitude Mountain Rescue Gear Set', category: 'Rescue Gear', department: 'SDRF Kangra HQ', quantity: 8, place: 'Kangra HQ', status: 'available', lat: 32.2190, lng: 76.3234 },
+      { qr_code: 'EQ-3003', name: 'High-Lumen Telescopic LED Light Tower', category: 'Power & Light', department: 'SDRF Kangra HQ', quantity: 6, place: 'Kangra HQ', status: 'available', lat: 32.2190, lng: 76.3234 },
+      { qr_code: 'EQ-3004', name: 'Motorola VHF Tactical Handheld Set (x15)', category: 'Communication', department: 'SDRF Kangra HQ', quantity: 15, place: 'Kangra HQ', status: 'available', lat: 32.2190, lng: 76.3234 },
+    ];
+
+    const insert = db.prepare(`
+      INSERT OR IGNORE INTO equipment (qr_code, name, category, department, quantity, place, status, lat, lng)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const item of demoItems) {
+      insert.run(item.qr_code, item.name, item.category, item.department, item.quantity, item.place, item.status, item.lat, item.lng);
+    }
+    logger.info(`Seeded ${demoItems.length} demo SDRF equipment items across Shimla, Mandi, and Kangra HQs.`);
+  } catch (e) {
+    logger.error("Failed to seed demo equipment:", e);
+  }
 }
 
 module.exports = {
