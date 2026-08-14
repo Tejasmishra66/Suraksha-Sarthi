@@ -1,6 +1,6 @@
 const { db } = require("../db/database");
 
-function queueOperation(entityType, entityId, operation, payload) {
+async function () {
   // Stores field events when client is offline for eventual sync.
   const statement = db.prepare(
     "INSERT INTO offline_queue (entity_type, entity_id, operation, payload_json, status) VALUES (?, ?, ?, ?, 'queued')"
@@ -9,11 +9,11 @@ function queueOperation(entityType, entityId, operation, payload) {
   return statement.run(entityType, entityId || null, operation, JSON.stringify(payload));
 }
 
-function markSynced(queueId) {
+async function () {
   db.prepare("UPDATE offline_queue SET status = 'synced', synced_at = CURRENT_TIMESTAMP WHERE id = ?").run(queueId);
 }
 
-function processQueueItem(item) {
+async function () {
   // Applies queued operation to target table during reconciliation.
   const payload = JSON.parse(item.payload_json);
 
@@ -42,7 +42,7 @@ function processQueueItem(item) {
   markSynced(item.id);
 }
 
-function flushQueuedOperations() {
+async function () {
   const queued = db.prepare("SELECT * FROM offline_queue WHERE status = 'queued' ORDER BY id ASC").all();
   queued.forEach(processQueueItem);
   return queued.length;

@@ -18,7 +18,7 @@ try {
   logger.error("Failed to initialize web-push", err);
 }
 
-function saveSubscription({ userId, office, subscription }) {
+async function () {
   try {
     return db
       .prepare(
@@ -33,7 +33,7 @@ function saveSubscription({ userId, office, subscription }) {
   }
 }
 
-function getSubscriptionsByOffices(offices) {
+async function () {
   if (!offices || offices.length === 0) return [];
   const placeholders = offices.map(() => "?").join(", ");
   return db

@@ -6,11 +6,11 @@ const { startEscalationMonitor } = require("./services/alertingService");
 const { startHeartbeatMonitor } = require("./services/statusService");
 const logger = require("./utils/logger");
 
-function start() {
+async function start() {
   // Boots database, seed data, monitors, and HTTP server.
   try {
-    runMigrations();
-    runSeed();
+    await runMigrations();
+    await runSeed();
     startEscalationMonitor();
     startHeartbeatMonitor();
 

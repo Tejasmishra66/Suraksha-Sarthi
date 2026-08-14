@@ -9,14 +9,14 @@ const DISASTER_TO_SKILLS = {
   Cyclone: ["SAR", "Utility", "Connectivity"]
 };
 
-function normalizeSkills(rawValue) {
+async function () {
   return String(rawValue || "")
     .split(",")
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
 }
 
-function findMatchingVolunteers(lat, lng, radiusKm, requiredSkills) {
+async function () {
   // Filters volunteers by geofence radius and capability tags.
   const volunteers = db.prepare("SELECT * FROM volunteers WHERE active = 1").all();
   const required = requiredSkills.map((item) => item.toLowerCase());
@@ -30,7 +30,7 @@ function findMatchingVolunteers(lat, lng, radiusKm, requiredSkills) {
   });
 }
 
-function createAlertAndNotify({ disasterType, lat, lng, radiusKm, severity, createdBy }) {
+async function () {
   // Creates alert row and notifies matched volunteers and agency heads.
   const alertInsert = db.prepare(
     `INSERT INTO alerts (disaster_type, lat, lng, radius_km, severity, created_by)
@@ -64,7 +64,7 @@ function createAlertAndNotify({ disasterType, lat, lng, radiusKm, severity, crea
   };
 }
 
-function startEscalationMonitor() {
+async function () {
   // Escalates alerts if no recipients respond within 5 minutes.
   const escalateStatement = db.prepare(
     `SELECT a.*

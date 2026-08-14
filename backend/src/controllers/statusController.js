@@ -1,6 +1,6 @@
 const statusService = require("../services/statusService");
 
-function status(_req, res) {
+async function () {
   return res.json(statusService.listStatuses());
 }
 

@@ -1,15 +1,15 @@
 const incidentModel = require("../models/incidentModel");
 
-function verifyIncident(incidentId, officerId) {
+async function () {
   // Transitions incident verification state to Verified.
-  const incident = incidentModel.getIncidentById(incidentId);
+  const incident = await incidentId);
   if (!incident) {
     const error = new Error("Incident not found");
     error.statusCode = 404;
     throw error;
   }
 
-  incidentModel.verifyIncident(incidentId, officerId);
+  await incidentId, officerId);
   return {
     id: incidentId,
     verificationState: "Verified",
@@ -17,8 +17,8 @@ function verifyIncident(incidentId, officerId) {
   };
 }
 
-function listIncidents(onlyVerified) {
-  return incidentModel.listIncidentsByVerification(Boolean(onlyVerified));
+async function () {
+  return await Boolean(onlyVerified));
 }
 
 module.exports = {

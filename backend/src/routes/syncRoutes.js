@@ -6,7 +6,7 @@ const incidentModel = require("../models/incidentModel");
 const router = express.Router();
 
 // Receives batch offline queue events from field app
-router.post("/queue", (req, res) => {
+router.post("/queue", async (, ) => {
   const { items = [] } = req.body;
   if (!Array.isArray(items)) {
     return res.status(400).json({ message: "items must be an array" });
@@ -20,7 +20,7 @@ router.post("/queue", (req, res) => {
 });
 
 // Directly batch sync offline emergency incidents (2G low-bandwidth mode)
-router.post("/batch", (req, res) => {
+router.post("/batch", async (, ) => {
   const { incidents = [], items = [] } = req.body;
   const listToProcess = Array.isArray(incidents) && incidents.length > 0 ? incidents : items;
 
@@ -32,7 +32,7 @@ router.post("/batch", (req, res) => {
   listToProcess.forEach((item) => {
     const payload = item.payload || item;
     try {
-      incidentModel.createIncident({
+      await {
         title: payload.title || "Offline Emergency SITREP",
         description: payload.description || "",
         disasterType: payload.disasterType || payload.disaster_type || "General Emergency",

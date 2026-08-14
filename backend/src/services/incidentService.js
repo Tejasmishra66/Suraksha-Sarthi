@@ -4,11 +4,11 @@ const path = require("path");
 const incidentModel = require("../models/incidentModel");
 const { queueOperation } = require("./syncService");
 
-function listIncidents() {
-  return incidentModel.listIncidents();
+async function () {
+  return await );
 }
 
-function createIncident(payload) {
+async function () {
   // Creates incident and generates media hash from metadata.
   const {
     title,
@@ -41,7 +41,7 @@ function createIncident(payload) {
 
   const finalLng = lng != null ? Number(lng) : (lon != null ? Number(lon) : null);
 
-  const result = incidentModel.createIncident({
+  const result = await {
     title,
     description,
     disasterType,
@@ -73,9 +73,9 @@ function createIncident(payload) {
   return { id: result.lastInsertRowid, mediaHash };
 }
 
-function attachIncidentMedia(incidentId, file, { timestamp, gps }) {
+async function () {
   // Attaches uploaded photo and tamper-proof metadata to incident.
-  const incident = incidentModel.getIncidentById(incidentId);
+  const incident = await incidentId);
   if (!incident) {
     const error = new Error("Incident not found");
     error.statusCode = 404;
@@ -95,7 +95,7 @@ function attachIncidentMedia(incidentId, file, { timestamp, gps }) {
   const mediaHash = crypto.createHash("sha256").update(material).digest("hex");
 
   const mediaRef = path.join("uploads", file.filename).replace(/\\/g, "/");
-  incidentModel.updateIncidentMedia(incidentId, {
+  await incidentId, {
     mediaHash,
     mediaTimestamp,
     mediaGps,

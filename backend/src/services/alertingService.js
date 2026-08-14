@@ -14,7 +14,7 @@ const DISASTER_TO_SKILLS = {
 	default: []
 };
 
-function normalizeSkills(skills) {
+async function () {
 	// Normalizes comma-separated capability tags for matching.
 	return String(skills || "")
 		.split(",")
@@ -22,14 +22,14 @@ function normalizeSkills(skills) {
 		.filter(Boolean);
 }
 
-function getAgencyHeads() {
+async function () {
 	// Loads agency head accounts for alert escalation and routing.
 	return db.prepare("SELECT * FROM users WHERE role = 'agency_head'").all();
 }
 
-function findVolunteersInRadius(lat, lng, radiusKm, requiredSkills = []) {
+async function () {
 	// Returns active volunteers inside a geofence with matching capability tags.
-	const volunteers = volunteerModel.listActiveVolunteers();
+	const volunteers = await );
 	const required = requiredSkills.map((skill) => String(skill).toLowerCase());
 
 	return volunteers.filter((volunteer) => {
@@ -43,7 +43,7 @@ function findVolunteersInRadius(lat, lng, radiusKm, requiredSkills = []) {
 	});
 }
 
-function createAlertAndNotify({ disasterType, lat, lng, radiusKm = 10, severity = "medium", createdBy, officeTags }) {
+async function () {
 	// Creates the alert row, dispatches volunteer notifications, and records recipients.
 	if (!disasterType || lat == null || lng == null) {
 		const error = new Error("disasterType, lat, and lng are required");
@@ -51,7 +51,7 @@ function createAlertAndNotify({ disasterType, lat, lng, radiusKm = 10, severity 
 		throw error;
 	}
 
-	const alertResult = alertModel.createAlert({
+	const alertResult = await {
 		disasterType,
 		lat: Number(lat),
 		lng: Number(lng),
@@ -66,7 +66,7 @@ function createAlertAndNotify({ disasterType, lat, lng, radiusKm = 10, severity 
 	const volunteers = findVolunteersInRadius(lat, lng, radiusKm, requiredSkills);
 
 	volunteers.forEach((volunteer) => {
-		alertModel.createAlertRecipient({
+		await {
 			alertId,
 			volunteerId: volunteer.id,
 			channel: "sms"
@@ -76,7 +76,7 @@ function createAlertAndNotify({ disasterType, lat, lng, radiusKm = 10, severity 
 
 	const agencyHeads = getAgencyHeads();
 	agencyHeads.forEach((user) => {
-		alertModel.createAlertRecipient({
+		await {
 			alertId,
 			userId: user.id,
 			channel: "app"
@@ -96,12 +96,12 @@ function createAlertAndNotify({ disasterType, lat, lng, radiusKm = 10, severity 
 	};
 }
 
-function getAlertRecipients(alertId) {
+async function () {
 	// Returns current recipient matrix for an alert.
-	return alertModel.listAlertRecipients(alertId);
+	return await alertId);
 }
 
-function markAlertResponse(alertId, volunteerId, userId) {
+async function () {
 	// Marks a recipient as responded so escalation will not re-notify them.
 	if (!volunteerId && !userId) {
 		const error = new Error("volunteerId or userId is required");
@@ -109,30 +109,30 @@ function markAlertResponse(alertId, volunteerId, userId) {
 		throw error;
 	}
 
-	return alertModel.markRecipientResponded(alertId, volunteerId, userId);
+	return await alertId, volunteerId, userId);
 }
 
-function listAlertsForMap() {
+async function () {
 	// Returns a lightweight alert pin list for map canvas rendering.
-	return alertModel.listAlertsForMap();
+	return await );
 }
 
-function startEscalationMonitor() {
+async function () {
 	// Escalates alerts without responses after five minutes.
 	setInterval(() => {
-		const staleAlerts = alertModel.listStaleAlerts();
+		const staleAlerts = await );
 		const agencyHeads = getAgencyHeads();
 
 		staleAlerts.forEach((alert) => {
-			const responseCount = alertModel.countResponses(alert.id);
+			const responseCount = await alert.id);
 			if (responseCount > 0) {
 				return;
 			}
 
-			alertModel.markAlertEscalated(alert.id);
+			await alert.id);
 
 			agencyHeads.forEach((user) => {
-				alertModel.createAlertRecipient({
+				await {
 					alertId: alert.id,
 					userId: user.id,
 					channel: "escalation_sms"

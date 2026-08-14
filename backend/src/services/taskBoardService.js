@@ -4,7 +4,7 @@ const { queueOperation } = require("./syncService");
 const { db } = require("../db/database");
 const { sendSms } = require("./smsService");
 
-function normalizeAgencyList(agencies, fallbackAgency) {
+async function () {
   const list = Array.isArray(agencies) ? agencies : [];
   const normalized = list
     .map((agency) => String(agency || "").trim())
@@ -16,7 +16,7 @@ function normalizeAgencyList(agencies, fallbackAgency) {
   return fallbackAgency ? [String(fallbackAgency).trim()].filter(Boolean) : [];
 }
 
-function getAgencyHeadsByAgencies(agencies) {
+async function () {
   if (!agencies.length) {
     return [];
   }
@@ -32,11 +32,11 @@ function getAgencyHeadsByAgencies(agencies) {
     .all(...agencies);
 }
 
-function listTasks() {
-  return taskModel.listTasks();
+async function () {
+  return await );
 }
 
-function createTask({ incidentId, title, details, assignedAgency, notificationAgencies, status = "New", createdBy, officeTags }) {
+async function () {
   // Validates and creates task cards for digital handshake workflow.
   if (!incidentId || !title) {
     const error = new Error("incidentId and title are required");
@@ -51,7 +51,7 @@ function createTask({ incidentId, title, details, assignedAgency, notificationAg
   }
 
   const agenciesToNotify = normalizeAgencyList(notificationAgencies, assignedAgency);
-  const result = taskModel.createTask({
+  const result = await {
     incidentId,
     title,
     details,
@@ -77,9 +77,9 @@ function createTask({ incidentId, title, details, assignedAgency, notificationAg
   };
 }
 
-function updateTask({ taskId, assignedAgency, status, offline }) {
+async function () {
   // Updates status/agency and optionally writes to offline queue mirror.
-  const task = taskModel.getTaskById(taskId);
+  const task = await taskId);
   if (!task) {
     const error = new Error("Task not found");
     error.statusCode = 404;
@@ -94,7 +94,7 @@ function updateTask({ taskId, assignedAgency, status, offline }) {
 
   const nextStatus = status || task.status;
   const nextAgency = assignedAgency || task.assigned_agency;
-  taskModel.updateTask(taskId, { assignedAgency: nextAgency, status: nextStatus });
+  await taskId, { assignedAgency: nextAgency, status: nextStatus });
 
   if (offline) {
     queueOperation("task", String(taskId), "update_status", { taskId, status: nextStatus });

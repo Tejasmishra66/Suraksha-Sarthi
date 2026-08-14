@@ -1,16 +1,16 @@
 const incidentService = require("../services/incidentService");
 const filterByOffice = require("../utils/officeFilter");
 
-function listIncidents(req, res) {
+async function () {
   const incidents = incidentService.listIncidents();
   return res.json(filterByOffice(incidents, req.user));
 }
 
-function createIncident(req, res) {
+async function () {
   return res.status(201).json(incidentService.createIncident(req.body));
 }
 
-function uploadMedia(req, res) {
+async function () {
   const result = incidentService.attachIncidentMedia(Number(req.params.id), req.file, {
     timestamp: req.body.timestamp,
     gps: req.body.gps

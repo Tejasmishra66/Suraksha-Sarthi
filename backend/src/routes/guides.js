@@ -3,7 +3,7 @@ const { db } = require("../db/database");
 const router = express.Router();
 
 // GET /guides - Fetch survival guides for offline caching
-router.get("/", (req, res) => {
+router.get("/", async (, ) => {
   try {
     const guides = db.prepare("SELECT * FROM offline_guides").all();
     res.json(guides);

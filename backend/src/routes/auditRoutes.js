@@ -5,14 +5,14 @@ const requireRole = require("../middlewares/requireRole");
 
 const router = express.Router();
 
-router.get("/", auth, requireRole("admin", "agency_head"), (req, res) => {
+router.get("/", auth, requireRole("admin", "agency_head"), async (, ) => {
   // Admin can see all, or filtered if query provided. Agency head sees only their office.
   let filter = req.query.office;
   if (req.user.role === "agency_head") {
     filter = req.user.district; // Force to their own office
   }
   
-  return res.json(auditModel.listAuditLogs(filter));
+  return res.json(await filter));
 });
 
 module.exports = router;

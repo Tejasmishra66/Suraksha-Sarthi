@@ -1,20 +1,20 @@
 const { db } = require("../db/database");
 
-function getUserAgency(userId) {
-  return db.prepare("SELECT agency, phone FROM users WHERE id = ?").get(userId);
+async function getUserAgency(userId) {
+  return await db.prepare("SELECT agency, phone FROM users WHERE id = ?").get(userId);
 }
 
-function upsertHeartbeat({ userId, location }) {
-  const user = getUserAgency(userId);
+async function upsertHeartbeat({ userId, location }) {
+  const user = await getUserAgency(userId);
   if (!user || !user.agency) {
     const error = new Error("User agency not found");
     error.statusCode = 400;
     throw error;
   }
 
-  const existing = db.prepare("SELECT id FROM heartbeats WHERE agency_id = ? ORDER BY id DESC LIMIT 1").get(user.agency);
+  const existing = await db.prepare("SELECT id FROM heartbeats WHERE agency_id = ? ORDER BY id DESC LIMIT 1").get(user.agency);
   if (existing) {
-    return db
+    return await db
       .prepare(
         "UPDATE heartbeats SET user_id = ?, location = ?, last_seen = CURRENT_TIMESTAMP, status = 'ONLINE' WHERE id = ?"
       )

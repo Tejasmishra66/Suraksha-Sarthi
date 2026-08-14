@@ -56,7 +56,7 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-router.post("/login", loginRateLimit, (req, res) => {
+router.post("/login", loginRateLimit, async (, ) => {
   // Validate input using Zod
   const validation = loginSchema.safeParse(req.body);
   if (!validation.success) {
@@ -125,7 +125,7 @@ const createUserSchema = z.object({
   district: z.string().optional().nullable(),
 });
 
-router.post("/create-user", auth, requireRole("admin"), (req, res) => {
+router.post("/create-user", auth, requireRole("admin"), async (, ) => {
   const validation = createUserSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({ 
@@ -250,7 +250,7 @@ router.post("/send-otp", loginRateLimit, async (req, res) => {
 });
 
 // POST /auth/verify-otp
-router.post("/verify-otp", loginRateLimit, (req, res) => {
+router.post("/verify-otp", loginRateLimit, async (, ) => {
   const { phone, otp } = req.body;
   if (!phone || !otp) {
     return res.status(400).json({ message: "Phone and OTP are required" });
@@ -289,7 +289,7 @@ const signupSchema = z.object({
   district: z.string().optional().nullable(),
 });
 
-router.post("/signup", loginRateLimit, (req, res) => {
+router.post("/signup", loginRateLimit, async (, ) => {
   const validation = signupSchema.safeParse(req.body);
   if (!validation.success) {
     return res.status(400).json({ 

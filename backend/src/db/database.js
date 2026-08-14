@@ -10,27 +10,62 @@ if (env.dbClient !== "sqlite") {
   );
 }
 
-const dbDirectory = path.dirname(env.dbPath);
-if (!fs.existsSync(dbDirectory)) {
-  fs.mkdirSync(dbDirectory, { recursive: true });
+const { Pool } = require("pg");
+
+if (!process.env.POSTGRES_URL) {
+  logger.warn("POSTGRES_URL is missing. Please set it in your environment variables to connect to Neon/Supabase.");
 }
 
-const db = new Database(env.dbPath);
-db.pragma("journal_mode = WAL");
+const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL || "postgres://localhost:5432/sdrf",
+  ssl: { rejectUnauthorized: false }
+});
+
+const db = {
+  prepare: (sql) => {
+    let paramIndex = 1;
+    let pgSql = sql.replace(/\?/g, () => `$${paramIndex++}`);
+    
+    // Auto-append RETURNING id for INSERT queries to support lastInsertRowid
+    if (pgSql.trim().toUpperCase().startsWith('INSERT') && !pgSql.toUpperCase().includes('RETURNING')) {
+      pgSql += ' RETURNING id';
+    }
+
+    return {
+      run: async (...params) => {
+        const res = await pool.query(pgSql, params);
+        let lastInsertRowid = null;
+        if (res.rows && res.rows.length > 0 && res.rows[0].id) {
+           lastInsertRowid = res.rows[0].id;
+        }
+        return { changes: res.rowCount, lastInsertRowid };
+      },
+      all: async (...params) => {
+        const res = await pool.query(pgSql, params);
+        return res.rows;
+      },
+      get: async (...params) => {
+        const res = await pool.query(pgSql, params);
+        return res.rows[0];
+      }
+    };
+  },
+  exec: async (sql) => {
+    await pool.query(sql);
+  },
+  close: async () => {
+    await pool.end();
+  }
+};
 
 function getTableColumns(tableName) {
-  return db.prepare(`PRAGMA table_info(${tableName})`).all().map((row) => row.name);
-}
 
-function ensureColumn(tableName, columnName, columnDefinition) {
-  const columns = getTableColumns(tableName);
-  if (!columns.includes(columnName)) {
-    db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition}`).run();
-  }
-}
+async function runMigrations() {
+  const schemaPath = path.resolve(__dirname, "schema.postgres.sql");
+  const sql = fs.readFileSync(schemaPath, "utf-8");
+  await db.exec(sql);
 
-function seedAgencyHeadPhones() {
-  db.prepare(
+  await db.prepare(
     `UPDATE users
      SET phone = CASE agency
        WHEN 'SDRF' THEN '+919000000000'
@@ -44,116 +79,14 @@ function seedAgencyHeadPhones() {
      END
      WHERE role = 'agency_head' AND (phone IS NULL OR phone = '')`
   ).run();
+
+  await seedDemoEquipment();
 }
 
-function runMigrations() {
-  // Initializes all core tables for MVP features.
-  const schemaPath = path.resolve(__dirname, "schema.sql");
-  const sql = fs.readFileSync(schemaPath, "utf-8");
-  db.exec(sql);
-
-  ensureColumn("users", "phone", "phone TEXT");
-  ensureColumn("users", "address", "address TEXT");
-  ensureColumn("users", "department", "department TEXT");
-  ensureColumn("users", "place", "place TEXT");
-  ensureColumn("users", "district", "district TEXT");
-  ensureColumn("volunteers", "place", "place TEXT");
-  ensureColumn("volunteers", "skills", "skills TEXT");
-  ensureColumn("volunteers", "aadhaar", "aadhaar TEXT");
-  ensureColumn("volunteers", "certification_url", "certification_url TEXT");
-  ensureColumn("volunteers", "aadhaar_front_url", "aadhaar_front_url TEXT");
-  ensureColumn("volunteers", "aadhaar_back_url", "aadhaar_back_url TEXT");
-  ensureColumn("volunteers", "district", "district TEXT");
-  ensureColumn("volunteers", "user_id", "user_id INTEGER");
-  ensureColumn("volunteers", "status", "status TEXT DEFAULT 'pending'");
-  ensureColumn("tasks", "notification_agencies", "notification_agencies TEXT");
-  
-  ensureColumn("incidents", "office_tags", "office_tags TEXT");
-  ensureColumn("incidents", "reporter_phone", "reporter_phone TEXT");
-  ensureColumn("tasks", "office_tags", "office_tags TEXT");
-  ensureColumn("bulletins", "office_tags", "office_tags TEXT");
-  ensureColumn("alerts", "office_tags", "office_tags TEXT");
-  ensureColumn("intel_pins", "office_tags", "office_tags TEXT");
-
-  ensureColumn("equipment", "department", "department TEXT");
-  ensureColumn("equipment", "quantity", "quantity INTEGER DEFAULT 1");
-  ensureColumn("equipment", "place", "place TEXT");
-  ensureColumn("equipment", "maintenance_reason", "maintenance_reason TEXT");
-  ensureColumn("equipment_transfers", "sender_hq", "sender_hq TEXT");
-  ensureColumn("equipment_transfers", "receiver_hq", "receiver_hq TEXT");
-
-  seedAgencyHeadPhones();
-
-  // Initialize tables for Equipment Tracking (Asset Management) and Offline Guides
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS equipment (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      qr_code TEXT UNIQUE,
-      name TEXT,
-      category TEXT,
-      status TEXT DEFAULT 'available', -- available, dispatched, in_use
-      lat REAL,
-      lng REAL,
-      last_scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      current_owner_id INTEGER
-    );
-
-    CREATE TABLE IF NOT EXISTS equipment_transfers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      equipment_id INTEGER,
-      sender_id INTEGER,
-      receiver_id INTEGER,
-      status TEXT, -- dispatched, confirmed
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS offline_guides (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT,
-      content TEXT,
-      version INTEGER DEFAULT 1,
-      download_url TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS muted_alerts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      alert_id TEXT NOT NULL,
-      alert_type TEXT NOT NULL, -- 'incident', 'task', 'bulletin', 'alert'
-      office TEXT NOT NULL,
-      muted_by INTEGER,
-      muted_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS audit_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER,
-      office TEXT,
-      action TEXT NOT NULL,
-      entity_type TEXT,
-      entity_id TEXT,
-      details TEXT,
-      ip_address TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS web_push_subscriptions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER,
-      office TEXT,
-      endpoint TEXT UNIQUE NOT NULL,
-      p256dh TEXT NOT NULL,
-      auth TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  seedDemoEquipment();
-}
-
-function seedDemoEquipment() {
+async function seedDemoEquipment() {
   try {
-    const count = db.prepare("SELECT COUNT(*) as cnt FROM equipment").get();
-    if (count && count.cnt >= 5) {
+    const countRes = await db.prepare("SELECT COUNT(*) as cnt FROM equipment").get();
+    if (countRes && parseInt(countRes.cnt) >= 5) {
       return;
     }
 
@@ -173,12 +106,13 @@ function seedDemoEquipment() {
     ];
 
     const insert = db.prepare(`
-      INSERT OR IGNORE INTO equipment (qr_code, name, category, department, quantity, place, status, lat, lng)
+      INSERT INTO equipment (qr_code, name, category, department, quantity, place, status, lat, lng)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT DO NOTHING
     `);
 
     for (const item of demoItems) {
-      insert.run(item.qr_code, item.name, item.category, item.department, item.quantity, item.place, item.status, item.lat, item.lng);
+      await insert.run(item.qr_code, item.name, item.category, item.department, item.quantity, item.place, item.status, item.lat, item.lng);
     }
     logger.info(`Seeded ${demoItems.length} demo SDRF equipment items across Shimla, Mandi, and Kangra HQs.`);
   } catch (e) {

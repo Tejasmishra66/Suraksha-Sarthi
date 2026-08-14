@@ -2,7 +2,7 @@ const heartbeatModel = require("../models/heartbeatModel");
 const { db } = require("../db/database");
 const { sendSms } = require("./smsService");
 
-function recordHeartbeat({ userId, location }) {
+async function () {
   // Persists the latest heartbeat for the user's agency.
   if (!userId) {
     const error = new Error("user_id is required");
@@ -10,7 +10,7 @@ function recordHeartbeat({ userId, location }) {
     throw error;
   }
 
-  heartbeatModel.upsertHeartbeat({ userId, location });
+  await { userId, location });
   const user = db.prepare("SELECT id, agency FROM users WHERE id = ?").get(userId);
 
   return {
@@ -23,12 +23,12 @@ function recordHeartbeat({ userId, location }) {
   };
 }
 
-function listStatuses() {
+async function () {
   // Returns the current agency monitoring feed.
-  return heartbeatModel.listAgencyStatuses();
+  return await );
 }
 
-function getFallbackContact(agencyId) {
+async function () {
   // Returns the agency head's phone, or null if none is registered.
   const row = db
     .prepare("SELECT phone FROM users WHERE agency = ? AND role = 'agency_head' AND phone IS NOT NULL ORDER BY id ASC LIMIT 1")
@@ -36,12 +36,12 @@ function getFallbackContact(agencyId) {
   return row?.phone || null;
 }
 
-function startHeartbeatMonitor() {
+async function () {
   // Marks stale agencies offline and sends fallback SMS reminders.
   setInterval(() => {
-    const stale = heartbeatModel.listOfflineCandidates(10);
+    const stale = await 10);
     stale.forEach((item) => {
-      heartbeatModel.markOffline(item.id);
+      await item.id);
       const phone = getFallbackContact(item.agency_id);
       // Only send SMS if a real phone number is registered. Never call a placeholder.
       if (phone) {

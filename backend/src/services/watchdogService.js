@@ -1,12 +1,12 @@
 const { db } = require("../db/database");
 const { sendSms } = require("./smsService");
 
-function recordHeartbeat(agency, source = "api") {
+async function () {
   // Writes latest heartbeat for an agency endpoint.
   db.prepare("INSERT INTO watchdog_status (agency, source, status) VALUES (?, ?, 'online')").run(agency, source);
 }
 
-function getAgencyHealth() {
+async function () {
   // Returns agency health based on heartbeat in last 5 minutes.
   const agencies = db.prepare("SELECT DISTINCT agency FROM watchdog_status").all();
   return agencies.map(({ agency }) => {
@@ -32,7 +32,7 @@ function getAgencyHealth() {
   });
 }
 
-function startWatchdogMonitor() {
+async function () {
   // Sends failover SMS when agency heartbeat is stale.
   setInterval(() => {
     const health = getAgencyHealth();

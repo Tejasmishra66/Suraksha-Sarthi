@@ -1,6 +1,6 @@
 const statusService = require("../services/statusService");
 
-function ping(req, res) {
+async function () {
   return res.json(
     statusService.recordHeartbeat({
       userId: req.body.user_id || req.user.id,

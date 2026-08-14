@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const { db } = require("../db/database");
 
-function listAgencyMembers(agency) {
+async function () {
   if (!agency) {
     const error = new Error("agency is required");
     error.statusCode = 400;
@@ -19,7 +19,7 @@ function listAgencyMembers(agency) {
     .all(agency);
 }
 
-function createAgencyMember({ agency, name, role, phone, address }) {
+async function () {
   if (!agency || !name || !role || !phone) {
     const error = new Error("agency, name, role, and phone are required");
     error.statusCode = 400;

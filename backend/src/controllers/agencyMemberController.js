@@ -1,10 +1,10 @@
 const agencyMemberService = require("../services/agencyMemberService");
 
-function listMembers(req, res) {
+async function () {
   return res.json(agencyMemberService.listAgencyMembers(req.params.agency));
 }
 
-function createMember(req, res) {
+async function () {
   const result = agencyMemberService.createAgencyMember({
     agency: req.params.agency,
     name: req.body.name,

@@ -3,7 +3,7 @@ const { db } = require("../db/database");
 const router = express.Router();
 
 // GET /equipment - Fetch equipment catalog
-router.get("/", (req, res) => {
+router.get("/", async (, ) => {
   try {
     const equipment = db.prepare("SELECT * FROM equipment ORDER BY id DESC").all();
     res.json({ success: true, data: equipment });
@@ -14,7 +14,7 @@ router.get("/", (req, res) => {
 });
 
 // POST /equipment - Add new equipment
-router.post("/", (req, res) => {
+router.post("/", async (, ) => {
   const { name, category, department, quantity, place, status } = req.body;
   if (!name) {
     return res.status(400).json({ error: "Equipment name is required" });
@@ -48,7 +48,7 @@ router.post("/", (req, res) => {
 });
 
 // POST /equipment/dispatch - Dispatch equipment between Headquarters
-router.post("/dispatch", (req, res) => {
+router.post("/dispatch", async (, ) => {
   const { equipment_id, sender_hq, receiver_hq } = req.body;
   if (!equipment_id || !receiver_hq) {
     return res.status(400).json({ error: "equipment_id and receiver_hq are required" });
@@ -84,7 +84,7 @@ router.post("/dispatch", (req, res) => {
 });
 
 // POST /equipment/receive - Receive equipment at destination HQ
-router.post("/receive", (req, res) => {
+router.post("/receive", async (, ) => {
   const { equipment_id, receiver_hq } = req.body;
   if (!equipment_id) {
     return res.status(400).json({ error: "equipment_id is required" });
@@ -119,7 +119,7 @@ router.post("/receive", (req, res) => {
 });
 
 // POST /equipment/maintenance - Send to or Return from Maintenance
-router.post("/maintenance", (req, res) => {
+router.post("/maintenance", async (, ) => {
   const { equipment_id, action, reason } = req.body;
   if (!equipment_id) {
     return res.status(400).json({ error: "equipment_id is required" });
@@ -154,7 +154,7 @@ router.post("/maintenance", (req, res) => {
 });
 
 // PATCH /equipment/:id/status - Update equipment status
-router.patch("/:id/status", (req, res) => {
+router.patch("/:id/status", async (, ) => {
   const { id } = req.params;
   const { status, place } = req.body;
   if (!status) {
@@ -175,7 +175,7 @@ router.patch("/:id/status", (req, res) => {
 });
 
 // POST /equipment/:id/scan - Logs a QR code scan
-router.post("/:id/scan", (req, res) => {
+router.post("/:id/scan", async (, ) => {
   const { id } = req.params;
   const { action, lat, lng, receiver_id, sender_id } = req.body;
   

@@ -13,11 +13,11 @@ const ALLOWED_CATEGORIES = [
   "Others"
 ];
 
-function listBulletins() {
-  return bulletinModel.listBulletins();
+async function () {
+  return await );
 }
 
-function createBulletin(payload, authorId) {
+async function () {
   // Creates a macro-update bulletin for the shared operations feed.
   const { category, message, officeTags } = payload;
   if (!category || !message) {
@@ -32,7 +32,7 @@ function createBulletin(payload, authorId) {
     throw error;
   }
 
-  const result = bulletinModel.createBulletin({
+  const result = await {
     category,
     message,
     authorId,

@@ -3,15 +3,15 @@ const resourceModel = require("../models/resourceModel");
 const trainingKitModel = require("../models/trainingKitModel");
 const { findVolunteersInRadius } = require("./alertingService");
 
-function listVolunteers() {
-  return volunteerModel.listVolunteers();
+async function () {
+  return await );
 }
 
-function createVolunteer(data) {
-  return volunteerModel.createVolunteer(data);
+async function () {
+  return await data);
 }
 
-function broadcastWithinRadius({ lat, lng, radiusKm = 10, skills = [] }) {
+async function () {
   // Returns matching volunteers for active radius broadcast.
   if (lat == null || lng == null) {
     const error = new Error("lat and lng are required");
@@ -23,24 +23,24 @@ function broadcastWithinRadius({ lat, lng, radiusKm = 10, skills = [] }) {
   return { total: matches.length, matches };
 }
 
-function listResources() {
-  return resourceModel.listResources();
+async function () {
+  return await );
 }
 
-function createResource(data) {
-  return resourceModel.createResource(data);
+async function () {
+  return await data);
 }
 
-function listRainfallLogs() {
-  return resourceModel.listRainfallLogs();
+async function () {
+  return await );
 }
 
-function listTrainingKits() {
-  return trainingKitModel.listTrainingKits();
+async function () {
+  return await );
 }
 
-function updateResourceStatus(id, status) {
-  return resourceModel.updateResourceStatus(id, status);
+async function () {
+  return await id, status);
 }
 
 module.exports = {

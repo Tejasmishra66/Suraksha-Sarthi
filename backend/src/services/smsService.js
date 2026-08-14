@@ -1,6 +1,6 @@
 const env = require("../config/env");
 
-function getProvider(config = env) {
+async function () {
   if (config.twilioEnabled) {
     return "twilio";
   }
@@ -10,7 +10,7 @@ function getProvider(config = env) {
   return "mock";
 }
 
-function validateProviderConfig(provider, config = env) {
+async function () {
   if (provider === "twilio") {
     return Boolean(config.twilioAccountSid && config.twilioAuthToken && config.twilioFrom);
   }
@@ -22,7 +22,7 @@ function validateProviderConfig(provider, config = env) {
   return true;
 }
 
-function buildTwilioRequest(phone, message, config = env) {
+async function () {
   const body = new URLSearchParams({
     To: phone,
     From: config.twilioFrom,
@@ -44,7 +44,7 @@ function buildTwilioRequest(phone, message, config = env) {
   };
 }
 
-function buildGupshupRequest(phone, message, config = env) {
+async function () {
   const body = new URLSearchParams({
     channel: "sms",
     source: config.smsGupshupSource,
@@ -110,7 +110,7 @@ async function dispatchSms(phone, message, options = {}) {
   return { provider, sent: true, status: response.status };
 }
 
-function sendSms(phone, message) {
+async function () {
   // Dispatches real SMS when configured; logs in local MVP/mock mode.
   const provider = getProvider(env);
 

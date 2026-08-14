@@ -1,34 +1,34 @@
 const volunteerResourceService = require("../services/volunteerResourceService");
 const { toCsv } = require("../services/csvService");
 
-function listResources(_req, res) {
+async function () {
   return res.json(volunteerResourceService.listResources());
 }
 
-function createResource(req, res) {
+async function () {
   const result = volunteerResourceService.createResource(req.body);
   return res.status(201).json({ id: result.lastInsertRowid });
 }
 
-function listTrainingKits(_req, res) {
+async function () {
   return res.json(volunteerResourceService.listTrainingKits());
 }
 
-function exportResourcesCsv(_req, res) {
+async function () {
   const csv = toCsv(volunteerResourceService.listResources());
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", 'attachment; filename="resources.csv"');
   return res.send(csv);
 }
 
-function exportRainfallCsv(_req, res) {
+async function () {
   const csv = toCsv(volunteerResourceService.listRainfallLogs());
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", 'attachment; filename="rainfall.csv"');
   return res.send(csv);
 }
 
-function updateResourceStatus(req, res) {
+async function () {
   const { id } = req.params;
   const { status } = req.body;
   volunteerResourceService.updateResourceStatus(id, status);

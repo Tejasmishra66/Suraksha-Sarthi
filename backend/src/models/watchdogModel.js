@@ -14,12 +14,11 @@ function getLatestHeartbeat(agency) {
     .get(agency);
 }
 
-function isOnlineByTimestamp(timestamp) {
-  return (
-    db
+async function isOnlineByTimestamp(timestamp) {
+  const result = await db
       .prepare("SELECT CASE WHEN datetime(?) >= datetime('now', '-5 minutes') THEN 1 ELSE 0 END AS online")
-      .get(timestamp).online === 1
-  );
+      .get(timestamp);
+  return result && result.online === 1;
 }
 
 module.exports = {

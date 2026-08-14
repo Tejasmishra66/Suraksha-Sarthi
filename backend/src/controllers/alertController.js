@@ -1,7 +1,7 @@
 const alertingService = require("../services/alertingService");
 const filterByOffice = require("../utils/officeFilter");
 
-function createAlert(req, res) {
+async function () {
   const output = alertingService.createAlertAndNotify({
     disasterType: req.body.disasterType,
     lat: Number(req.body.lat),
@@ -14,11 +14,11 @@ function createAlert(req, res) {
   return res.status(201).json(output);
 }
 
-function listAlertRecipients(req, res) {
+async function () {
   return res.json(alertingService.getAlertRecipients(Number(req.params.id)));
 }
 
-function respondAlert(req, res) {
+async function () {
   const result = alertingService.markAlertResponse(
     Number(req.params.id),
     req.body.volunteerId,
@@ -27,7 +27,7 @@ function respondAlert(req, res) {
   return res.json({ updated: result.changes });
 }
 
-function listPins(req, res) {
+async function () {
   const alerts = alertingService.listAlertsForMap();
   return res.json(filterByOffice(alerts, req.user));
 }

@@ -9,7 +9,7 @@ router.get("/vapid-public-key", (_req, res) => {
   res.send(env.vapidPublicKey || "");
 });
 
-router.post("/subscribe", auth, (req, res) => {
+router.post("/subscribe", auth, async (, ) => {
   const subscription = req.body;
   
   if (!subscription || !subscription.endpoint) {

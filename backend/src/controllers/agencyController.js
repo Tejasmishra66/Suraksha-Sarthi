@@ -1,6 +1,6 @@
 const agencyService = require("../services/agencyService");
 
-function listAgencies(_req, res) {
+async function () {
   return res.json(agencyService.listAgencies());
 }
 

@@ -4,20 +4,20 @@ const auth = require("../middlewares/auth");
 
 const router = express.Router();
 
-router.get("/", auth, (req, res) => {
+router.get("/", auth, async (, ) => {
   const office = req.user?.district;
   if (!office) return res.json([]);
-  return res.json(muteModel.listMutedAlerts(office));
+  return res.json(await office));
 });
 
-router.post("/", auth, (req, res) => {
+router.post("/", auth, async (, ) => {
   const office = req.user?.district;
   const { alertId, alertType } = req.body;
   if (!office || !alertId || !alertType) {
     return res.status(400).json({ message: "Missing required fields" });
   }
   
-  const result = muteModel.muteAlert({
+  const result = await {
     alertId,
     alertType,
     office,

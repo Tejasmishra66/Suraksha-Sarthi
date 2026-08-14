@@ -10,7 +10,7 @@ const AGENCY_CATALOG = [
   "HPEB"
 ];
 
-function listAgencies() {
+async function () {
   const userAgencies = db
     .prepare(
       `SELECT DISTINCT agency

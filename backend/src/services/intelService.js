@@ -1,10 +1,10 @@
 const intelModel = require("../models/intelModel");
 
-function listIntelPins() {
-  return intelModel.listIntelPins();
+async function () {
+  return await );
 }
 
-function createIntelPin(payload) {
+async function () {
   const { lat, lon, department, note, officeTags } = payload;
   if (lat == null || lon == null || !department || !note) {
     const error = new Error("lat, lon, department, and note are required");
@@ -12,7 +12,7 @@ function createIntelPin(payload) {
     throw error;
   }
 
-  const result = intelModel.createIntelPin({
+  const result = await {
     lat: Number(lat),
     lon: Number(lon),
     department,
