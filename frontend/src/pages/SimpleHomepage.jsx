@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Container, Typography, Grid, Button, Stack, Divider, IconButton } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 
@@ -25,6 +25,7 @@ import KeyboardArrowRightRoundedIcon from '@mui/icons-material/KeyboardArrowRigh
 import WifiTetheringRoundedIcon from '@mui/icons-material/WifiTetheringRounded';
 
 import HpsdmaFeed from '../components/HpsdmaFeed';
+import { fetchIncidents, fetchVolunteers, fetchAgencies, fetchEquipment } from '../api/client';
 
 const BLUE = '#1D4ED8';
 const NAVY = '#0F172A';
@@ -41,11 +42,11 @@ const FEATURES = [
 
 const QUICK_ACTIONS = [
   { icon: <AssignmentRoundedIcon fontSize="small" />, label: 'Report Incident', color: '#3B82F6', path: '/emergency' },
-  { icon: <ContactPhoneRoundedIcon fontSize="small" />, label: 'Emergency Contacts', color: '#EF4444', path: '/emergency' },
-  { icon: <HandshakeRoundedIcon fontSize="small" />, label: 'Volunteer Signup', color: '#F97316', path: '/volunteer' },
+  { icon: <ContactPhoneRoundedIcon fontSize="small" />, label: 'Emergency Contacts', color: '#EF4444', path: '/contacts' },
+  { icon: <HandshakeRoundedIcon fontSize="small" />, label: 'Volunteer Signup', color: '#F97316', path: '/join-volunteer' },
   { icon: <AddHomeRoundedIcon fontSize="small" />, label: 'Shelter Locations', color: '#8B5CF6', path: '/map' },
-  { icon: <LocalLibraryRoundedIcon fontSize="small" />, label: 'Disaster Guides', color: '#10B981', path: '/' },
-  { icon: <AssignmentRoundedIcon fontSize="small" />, label: 'Important Numbers', color: '#0F172A', path: '/emergency' },
+  { icon: <LocalLibraryRoundedIcon fontSize="small" />, label: 'Disaster Guides', color: '#10B981', path: '/guides' },
+  { icon: <AssignmentRoundedIcon fontSize="small" />, label: 'Live Updates', color: '#0F172A', path: '/updates' },
 ];
 
 const TRUST_BADGES = [
@@ -56,7 +57,40 @@ const TRUST_BADGES = [
 ];
 
 export default function SimpleHomepage() {
-  const [summary, setSummary] = useState({ total: 243, active: 78, resolved: 165, volunteers: '1,248', departments: 12 });
+  const [summary, setSummary] = useState({ active: 0, volunteers: 0, teamMembers: 0, hq: 0, equipments: 0 });
+
+  useEffect(() => {
+    async function loadDashboardData() {
+      try {
+        const [incRes, volRes, eqRes, agRes] = await Promise.all([
+          fetchIncidents().catch(() => ({ data: [] })),
+          fetchVolunteers().catch(() => ({ data: [] })),
+          fetchEquipment().catch(() => ({ data: [] })),
+          fetchAgencies().catch(() => ({ data: [] }))
+        ]);
+
+        const incidents = incRes.data || [];
+        const activeIncidents = incidents.filter(i => i.status !== 'resolved').length;
+        
+        const volunteers = volRes.data || [];
+        
+        const equipment = eqRes.data || [];
+        
+        const agencies = agRes.data || [];
+        
+        setSummary({ 
+          active: activeIncidents, 
+          volunteers: volunteers.length, 
+          teamMembers: agencies.reduce((acc, a) => acc + (a.memberCount || 0), 0) || agencies.length * 5, 
+          hq: agencies.length, 
+          equipments: equipment.length 
+        });
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+      }
+    }
+    loadDashboardData();
+  }, []);
 
   const handleDataLoad = (data) => {
     if (data?.summary) {
@@ -123,20 +157,44 @@ export default function SimpleHomepage() {
               </Stack>
             </Grid>
 
-            {/* Floating Blue Card on right */}
+            {/* Floating Info Card on right */}
             <Grid item xs={12} md={5} lg={6} sx={{ display: { xs: 'none', md: 'flex' }, justifyContent: 'flex-end', mt: { xs: 8, md: 0 } }}>
               <Box sx={{ 
-                bgcolor: BLUE, color: '#FFF', p: 4, borderRadius: 4, maxWidth: 280,
-                boxShadow: '0 20px 25px -5px rgba(29, 78, 216, 0.4)', alignSelf: 'flex-end', mb: -4
+                background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(16px)',
+                color: NAVY, p: 4, borderRadius: 4, maxWidth: 280,
+                boxShadow: '0 25px 50px -12px rgba(11, 26, 62, 0.15)', alignSelf: 'flex-end', mb: -4,
+                border: '1px solid rgba(255, 255, 255, 0.6)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                position: 'relative', overflow: 'hidden',
+                '&:hover': {
+                  transform: 'translateY(-8px)',
+                  boxShadow: '0 30px 60px -12px rgba(11, 26, 62, 0.22)',
+                }
               }}>
-                <ShieldRoundedIcon sx={{ fontSize: 40, mb: 2, color: '#93C5FD' }} />
-                <Typography variant="h5" sx={{ fontWeight: 800, mb: 1, fontFamily: '"Outfit", sans-serif', lineHeight: 1.2 }}>
+                {/* Decorative background glow */}
+                <Box sx={{ position: 'absolute', top: -30, right: -30, width: 100, height: 100, bgcolor: 'rgba(29, 78, 216, 0.1)', borderRadius: '50%', filter: 'blur(20px)' }} />
+                
+                <Box sx={{ width: 56, height: 56, borderRadius: '16px', bgcolor: 'rgba(29, 78, 216, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+                  <ShieldRoundedIcon sx={{ fontSize: 32, color: BLUE }} />
+                </Box>
+                
+                <Typography variant="h5" sx={{ fontWeight: 800, mb: 1.5, fontFamily: '"Outfit", sans-serif', lineHeight: 1.2 }}>
                   Always Ready.<br/>Always There.
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#DBEAFE', mb: 3 }}>
+                <Typography variant="body2" sx={{ color: '#475569', mb: 3, lineHeight: 1.5 }}>
                   Dedicated to protect Himachal Pradesh
                 </Typography>
-                <Typography sx={{ color: '#FCD34D', fontWeight: 900, fontSize: '1.5rem' }}>24x7</Typography>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={{ 
+                    width: 10, height: 10, borderRadius: '50%', bgcolor: '#10B981', 
+                    boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.2)',
+                    animation: 'pulse 2s infinite' 
+                  }} />
+                  <Typography sx={{ color: NAVY, fontWeight: 900, fontSize: '1.25rem' }}>
+                    24x7 <Box component="span" sx={{ fontWeight: 600, fontSize: '1rem', color: '#64748B' }}>Active</Box>
+                  </Typography>
+                </Box>
               </Box>
             </Grid>
           </Grid>
@@ -149,13 +207,23 @@ export default function SimpleHomepage() {
           <Grid container spacing={2} justifyContent="space-between">
             {FEATURES.map((f, i) => (
               <Grid item xs={6} sm={4} md={2} key={i}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Box sx={{ width: 44, height: 44, borderRadius: '50%', bgcolor: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Box sx={{ 
+                  display: 'flex', flexDirection: 'column', gap: 1.5, 
+                  p: 2.5, borderRadius: 3, border: '1px solid #E2E8F0', 
+                  bgcolor: '#F8FAFC', transition: 'all 0.2s ease', height: '100%',
+                  '&:hover': { 
+                    bgcolor: '#FFFFFF', 
+                    boxShadow: '0 10px 15px -3px rgba(11,26,62,0.05), 0 4px 6px -2px rgba(11,26,62,0.025)', 
+                    transform: 'translateY(-3px)', 
+                    borderColor: '#CBD5E1' 
+                  }
+                }}>
+                  <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {f.icon}
                   </Box>
                   <Box>
-                    <Typography sx={{ fontWeight: 800, color: NAVY, fontSize: '0.8rem', lineHeight: 1.1 }}>{f.title}</Typography>
-                    <Typography sx={{ fontSize: '0.65rem', color: '#64748B', mt: 0.5 }}>{f.desc}</Typography>
+                    <Typography sx={{ fontWeight: 800, color: NAVY, fontSize: '0.85rem', lineHeight: 1.2 }}>{f.title}</Typography>
+                    <Typography sx={{ fontSize: '0.7rem', color: '#64748B', mt: 0.5, lineHeight: 1.3 }}>{f.desc}</Typography>
                   </Box>
                 </Box>
               </Grid>
@@ -164,161 +232,156 @@ export default function SimpleHomepage() {
         </Container>
       </Box>
 
-      {/* ─── 3. MIDDLE LAYOUT (Stats + Alerts) ─── */}
-      <Box sx={{ py: 8, bgcolor: '#F8FAFC', flexGrow: 1 }}>
+      {/* ─── 3. QUICK ACTIONS (Full Width) ─── */}
+      <Box sx={{ py: 6, bgcolor: '#F8FAFC' }}>
         <Container maxWidth="xl">
-          <Grid container spacing={6}>
-            
-            {/* LEFT COLUMN: At a Glance + Quick Actions */}
-            <Grid item xs={12} lg={8}>
-              
-              <Typography variant="overline" sx={{ fontWeight: 900, color: BLUE, display: 'block', mb: 2 }}>
-                HIMACHAL PRADESH AT A GLANCE
-              </Typography>
-              
-              <Grid container spacing={2} sx={{ mb: 6 }}>
-                {/* Total Incidents */}
-                <Grid item xs={12} sm={4}>
-                  <Box sx={{ bgcolor: '#FFF', p: 2, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <WarningAmberRoundedIcon sx={{ color: BLUE }} />
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontSize: '1.8rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.total}</Typography>
-                      <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>Total Incidents<br/>This Month</Typography>
-                    </Box>
-                  </Box>
-                </Grid>
-                {/* Active */}
-                <Grid item xs={6} sm={4}>
-                  <Box sx={{ bgcolor: '#FFF', p: 2, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <LocalFireDepartmentRoundedIcon sx={{ color: RED }} />
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontSize: '1.8rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.active}</Typography>
-                      <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>Active<br/>Incidents</Typography>
-                    </Box>
-                  </Box>
-                </Grid>
-                {/* Resolved */}
-                <Grid item xs={6} sm={4}>
-                  <Box sx={{ bgcolor: '#FFF', p: 2, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <CheckCircleOutlineRoundedIcon sx={{ color: '#10B981' }} />
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontSize: '1.8rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.resolved}</Typography>
-                      <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>Resolved<br/>Incidents</Typography>
-                    </Box>
-                  </Box>
-                </Grid>
-                {/* Volunteers */}
-                <Grid item xs={6} sm={4}>
-                  <Box sx={{ bgcolor: '#FFF', p: 2, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <GroupsRoundedIcon sx={{ color: '#8B5CF6' }} />
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontSize: '1.8rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.volunteers}</Typography>
-                      <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>Volunteers<br/>Active</Typography>
-                    </Box>
-                  </Box>
-                </Grid>
-                {/* Departments */}
-                <Grid item xs={6} sm={4}>
-                  <Box sx={{ bgcolor: '#FFF', p: 2, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <BusinessRoundedIcon sx={{ color: '#F97316' }} />
-                    </Box>
-                    <Box>
-                      <Typography sx={{ fontSize: '1.8rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.departments}</Typography>
-                      <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>Departments<br/>Online</Typography>
-                    </Box>
-                  </Box>
-                </Grid>
-              </Grid>
-
-              <Typography variant="overline" sx={{ fontWeight: 900, color: BLUE, display: 'block', mb: 2 }}>
-                QUICK ACTIONS
-              </Typography>
-
-              <Grid container spacing={2}>
-                {QUICK_ACTIONS.map((action, i) => (
-                  <Grid item xs={6} sm={4} md={2} key={i}>
-                    <Button 
-                      component={RouterLink} to={action.path}
-                      variant="outlined" 
-                      sx={{ 
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, 
-                        p: 2, height: '100%', width: '100%',
-                        borderColor: '#E2E8F0', bgcolor: '#FFF', color: NAVY, textTransform: 'none', borderRadius: 2,
-                        '&:hover': { borderColor: action.color, bgcolor: '#F8FAFC' }
-                      }}
-                    >
-                      <Box sx={{ color: action.color }}>{action.icon}</Box>
-                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, textAlign: 'center', lineHeight: 1.1 }}>
-                        {action.label.split(' ').map((w, j) => <React.Fragment key={j}>{w}<br/></React.Fragment>)}
-                      </Typography>
-                    </Button>
-                  </Grid>
-                ))}
-              </Grid>
-
-            </Grid>
-
-            {/* RIGHT COLUMN: Latest Alerts + SOS */}
-            <Grid item xs={12} lg={4}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="overline" sx={{ fontWeight: 900, color: BLUE }}>
-                  LATEST ALERTS
-                </Typography>
-                <Typography component={RouterLink} to="/updates" sx={{ fontSize: '0.75rem', fontWeight: 700, color: BLUE, textDecoration: 'none' }}>
-                  View All
-                </Typography>
-              </Box>
-              
-              <Box sx={{ bgcolor: '#FFF', border: '1px solid #E2E8F0', borderRadius: 3, overflow: 'hidden', mb: 3 }}>
-                <HpsdmaFeed maxItems={4} hideHeader={true} showSummary={false} layout="list" onDataLoad={handleDataLoad} />
-              </Box>
-
-              {/* SOS Square Box */}
-              <Box sx={{ 
-                bgcolor: RED, color: '#FFF', borderRadius: 3, p: 3, textAlign: 'center',
-                boxShadow: '0 10px 15px -3px rgba(220, 38, 38, 0.3)',
-                position: 'relative', overflow: 'hidden'
-              }}>
-                <Box sx={{ position: 'absolute', top: -50, left: -50, width: 150, height: 150, borderRadius: '50%', border: '20px solid rgba(255,255,255,0.05)' }} />
-                
-                <Box sx={{ 
-                  width: 80, height: 80, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.3)', 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 
-                }}>
-                  <Typography sx={{ fontSize: '1.8rem', fontWeight: 900 }}>SOS</Typography>
-                </Box>
-                <Typography variant="h6" sx={{ fontWeight: 800, mb: 1, fontFamily: '"Outfit", sans-serif' }}>
-                  Need Immediate Help?
-                </Typography>
-                <Typography sx={{ fontSize: '0.8rem', mb: 3, opacity: 0.9 }}>
-                  Press the SOS button to alert nearest responders with your location.
-                </Typography>
+          <Typography variant="overline" sx={{ fontWeight: 900, color: BLUE, display: 'block', mb: 3 }}>
+            QUICK ACTIONS
+          </Typography>
+          <Grid container spacing={3}>
+            {QUICK_ACTIONS.map((action, i) => (
+              <Grid item xs={6} sm={4} md={2} key={i}>
                 <Button 
-                  component={RouterLink} to="/emergency"
-                  variant="contained" 
-                  startIcon={<PhoneInTalkRoundedIcon />}
-                  style={{ backgroundColor: '#FFFFFF', color: RED }}
+                  component={RouterLink} to={action.path}
                   sx={{ 
-                    fontWeight: 900, borderRadius: '50px', px: 3, py: 1, width: '100%',
-                    '&:hover': { backgroundColor: '#FEE2E2' }
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5, 
+                    p: 2.5, height: '100%', width: '100%',
+                    bgcolor: '#FFFFFF', color: NAVY, textTransform: 'none', borderRadius: 4,
+                    border: '1px solid #E2E8F0',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 4px 6px -1px rgba(11,26,62,0.03)',
+                    '&:hover': { 
+                      borderColor: action.color, 
+                      bgcolor: '#FFFFFF',
+                      boxShadow: '0 10px 15px -3px rgba(11,26,62,0.08), 0 4px 6px -2px rgba(11,26,62,0.04)',
+                      transform: 'translateY(-3px)'
+                    }
                   }}
                 >
-                  PRESS SOS NOW
+                  <Box sx={{ color: action.color, bgcolor: `${action.color}15`, width: 44, height: 44, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {action.icon}
+                  </Box>
+                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>
+                    {action.label.split(' ').map((w, j) => <React.Fragment key={j}>{w}<br/></React.Fragment>)}
+                  </Typography>
                 </Button>
-              </Box>
-
-            </Grid>
-
+              </Grid>
+            ))}
           </Grid>
+        </Container>
+      </Box>
+
+      {/* ─── 4. DASHBOARD STATS (Full Width) ─── */}
+      <Box sx={{ py: 6, bgcolor: '#FFFFFF', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
+        <Container maxWidth="xl">
+          <Typography variant="overline" sx={{ fontWeight: 900, color: BLUE, display: 'block', mb: 3 }}>
+            HIMACHAL PRADESH AT A GLANCE
+          </Typography>
+          <Grid container spacing={3} columns={{ xs: 1, sm: 2, md: 5 }}>
+            {/* Real Incident Data */}
+            <Grid item xs={1}>
+              <Box sx={{ bgcolor: '#FFF', p: 3, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2, boxShadow: '0 4px 6px -1px rgba(11,26,62,0.03)' }}>
+                <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <WarningAmberRoundedIcon sx={{ color: RED, fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.active || 0}</Typography>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 700, mt: 0.5 }}>Active Incidents</Typography>
+                </Box>
+              </Box>
+            </Grid>
+            {/* Volunteers Numbers */}
+            <Grid item xs={1}>
+              <Box sx={{ bgcolor: '#FFF', p: 3, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2, boxShadow: '0 4px 6px -1px rgba(11,26,62,0.03)' }}>
+                <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <GroupsRoundedIcon sx={{ color: '#8B5CF6', fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.volunteers || 0}</Typography>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 700, mt: 0.5 }}>Active Volunteers</Typography>
+                </Box>
+              </Box>
+            </Grid>
+            {/* SDRF Team Members */}
+            <Grid item xs={1}>
+              <Box sx={{ bgcolor: '#FFF', p: 3, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2, boxShadow: '0 4px 6px -1px rgba(11,26,62,0.03)' }}>
+                <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <ShieldRoundedIcon sx={{ color: BLUE, fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.teamMembers || 0}</Typography>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 700, mt: 0.5 }}>SDRF Team Members</Typography>
+                </Box>
+              </Box>
+            </Grid>
+            {/* HQ Data */}
+            <Grid item xs={1}>
+              <Box sx={{ bgcolor: '#FFF', p: 3, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2, boxShadow: '0 4px 6px -1px rgba(11,26,62,0.03)' }}>
+                <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <BusinessRoundedIcon sx={{ color: '#F97316', fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.hq || 0}</Typography>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 700, mt: 0.5 }}>HQ Divisions Online</Typography>
+                </Box>
+              </Box>
+            </Grid>
+            {/* Equipment Data */}
+            <Grid item xs={1}>
+              <Box sx={{ bgcolor: '#FFF', p: 3, borderRadius: 3, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: 2, boxShadow: '0 4px 6px -1px rgba(11,26,62,0.03)' }}>
+                <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: '#ECFEFF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <InventoryRoundedIcon sx={{ color: '#0EA5E9', fontSize: 28 }} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: '2rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.equipments || 0}</Typography>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 700, mt: 0.5 }}>Active Equipment</Typography>
+                </Box>
+              </Box>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* ─── 5. GIANT SOS SECTION (COMPACT) ─── */}
+      <Box sx={{ 
+        bgcolor: RED, 
+        py: { xs: 5, md: 6 }, 
+        position: 'relative', 
+        overflow: 'hidden',
+        boxShadow: 'inset 0 0 100px rgba(0,0,0,0.2)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        textAlign: 'center'
+      }}>
+        {/* Glow rings */}
+        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 400, height: 400, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.03)', animation: 'pulse 3s infinite' }} />
+        <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 250, height: 250, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.05)', animation: 'pulse 3s infinite', animationDelay: '0.5s' }} />
+        
+        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
+          
+          <Button 
+            component={RouterLink} to="/emergency"
+            sx={{ 
+              width: 110, height: 110, borderRadius: '50%', 
+              bgcolor: '#FFFFFF', color: RED,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2.5,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3), 0 0 0 10px rgba(255,255,255,0.2)',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+              '&:hover': { 
+                transform: 'scale(1.05)',
+                boxShadow: '0 25px 50px rgba(0,0,0,0.4), 0 0 0 15px rgba(255,255,255,0.3)',
+                bgcolor: '#FFFFFF'
+              }
+            }}
+          >
+            <Typography sx={{ fontSize: '2.2rem', fontWeight: 900, lineHeight: 1 }}>SOS</Typography>
+          </Button>
+          
+          <Typography variant="h4" sx={{ fontWeight: 900, mb: 1.5, fontFamily: '"Outfit", sans-serif', color: '#FFF' }}>
+            Need Immediate Help?
+          </Typography>
+          <Typography sx={{ fontSize: '1rem', color: 'rgba(255,255,255,0.9)', maxWidth: 600, mx: 'auto' }}>
+            Press the SOS button above to instantly alert nearest responders, SDRF teams, and volunteers with your exact location.
+          </Typography>
         </Container>
       </Box>
 

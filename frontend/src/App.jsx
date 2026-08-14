@@ -30,6 +30,9 @@ const SecurityLogsPage = lazy(() => import('./pages/SecurityLogsPage'));
 const SignupPage = lazy(() => import('./pages/SignupPage'));
 const VolunteerRegistrationPage = lazy(() => import('./pages/VolunteerRegistrationPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
+const DisasterGuidesPage = lazy(() => import('./pages/DisasterGuidesPage'));
+const EmergencyContactsPage = lazy(() => import('./pages/EmergencyContactsPage'));
+const HpsdmaIncidentsPage = lazy(() => import('./pages/HpsdmaIncidentsPage'));
 
 import OfflineIndicator from './components/OfflineIndicator';
 import { useAuth, AuthProvider } from './context/AuthContext';
@@ -74,6 +77,9 @@ export default function App() {
                   <Route path="/home" element={<PageWrapper><Homepage /></PageWrapper>} />
                   <Route path="/emergency" element={<PageWrapper><EmergencyPage /></PageWrapper>} />
                   <Route path="/map" element={<PageWrapper><IncidentMapPage /></PageWrapper>} />
+                  <Route path="/guides" element={<PageWrapper><DisasterGuidesPage /></PageWrapper>} />
+                  <Route path="/contacts" element={<PageWrapper><EmergencyContactsPage /></PageWrapper>} />
+                  <Route path="/incidents" element={<PageWrapper><HpsdmaIncidentsPage /></PageWrapper>} />
                   <Route path="/updates" element={
                     <ProtectedRoute>
                       <PageWrapper><UpdatesPage /></PageWrapper>

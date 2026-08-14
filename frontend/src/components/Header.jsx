@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Typography, Drawer, Stack, Divider, Chip } from '@mui/material';
+import { Box, Button, IconButton, Typography, Drawer, Stack, Divider, Chip, Popover, List, ListItem, ListItemText } from '@mui/material';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { fetchIncidents } from '../api/client';
 
 import MenuRoundedIcon          from '@mui/icons-material/MenuRounded';
 import CloseRoundedIcon         from '@mui/icons-material/CloseRounded';
@@ -35,16 +36,34 @@ export default function Header() {
   const { user, signOut } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [incidents, setIncidents] = useState([]);
+  const [notifAnchorEl, setNotifAnchorEl] = useState(null);
+
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', handleScroll);
+    
+    // Fetch recent incidents for notifications
+    fetchIncidents().then(data => {
+      const active = (data || []).filter(inc => inc.status !== 'resolved').slice(0, 5);
+      setIncidents(active);
+    }).catch(err => console.error("Failed to load incidents for notifications", err));
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleOpenNotifs = (e) => setNotifAnchorEl(e.currentTarget);
+  const handleCloseNotifs = () => setNotifAnchorEl(null);
+  const handleClearNotifs = () => {
+    setIncidents([]);
+    setNotifAnchorEl(null);
+  };
+
   const isAdmin = user?.role === 'admin' || user?.role === 'agency_head';
+  const displayRole = user?.name ? user.name.toUpperCase() : (isAdmin ? 'ADMIN' : 'USER');
 
   const navItems = [
     { path: '/',               label: 'Home',            icon: <HomeRoundedIcon sx={{ fontSize: 18 }} /> },
@@ -54,9 +73,10 @@ export default function Header() {
 
   if (user) {
     navItems.push({ path: '/updates',        label: 'Alerts',          icon: <CampaignRoundedIcon sx={{ fontSize: 18 }} /> });
+    navItems.push({ path: '/incidents',      label: 'Live Incidents',  icon: <WarningAmberRoundedIcon sx={{ fontSize: 18 }} /> });
     navItems.push({ path: '/equipment',      label: 'Resources',       icon: <DirectionsCarRoundedIcon sx={{ fontSize: 18 }} />, dropdown: true });
-    navItems.push({ path: '/about',          label: 'About Us',        icon: <InfoRoundedIcon sx={{ fontSize: 18 }} /> });
     navItems.push({ path: '/volunteer',      label: 'Volunteers',      icon: <GroupsRoundedIcon sx={{ fontSize: 18 }} /> });
+    navItems.push({ path: '/about',          label: 'About Us',        icon: <InfoRoundedIcon sx={{ fontSize: 18 }} /> });
   }
 
   const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
@@ -85,37 +105,41 @@ export default function Header() {
         }}
       >
         {/* LOGO */}
-        <Box component={RouterLink} to="/" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, textDecoration: 'none', flexShrink: 0 }}>
-          <Box
-            component="img"
-            src="/sdrf-logo.png"
-            alt="SDRF Logo"
-            sx={{ width: 44, height: 44, objectFit: 'contain' }}
-            onError={(e) => {
-              // Fallback if logo doesn't exist yet
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
-            }}
-          />
-          {/* Fallback Icon Box if image fails to load */}
-          <Box sx={{
-            display: 'none', width: 40, height: 40, borderRadius: '11px',
+        <Box component={RouterLink} to="/" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, textDecoration: 'none', flexShrink: 0, transition: 'opacity 0.2s', '&:hover': { opacity: 0.85 } }}>
+          
+          {/* Circular Logo Box */}
+          <Box sx={{ 
+            width: 48, height: 48, borderRadius: '50%', overflow: 'hidden',
             background: 'linear-gradient(135deg, #1D4ED8 0%, #EA580C 100%)',
-            alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 14px rgba(29,78,216,0.30)', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(29,78,216,0.25)', position: 'relative'
           }}>
-            <ShieldRoundedIcon sx={{ color: '#fff', fontSize: 22 }} />
+            {/* Fallback Icon (shows if image fails to load) */}
+            <ShieldRoundedIcon sx={{ color: '#fff', fontSize: 26, position: 'absolute' }} />
+            
+            <Box
+              component="img"
+              src="/sdrf-logo.png"
+              alt="SDRF Logo"
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', position: 'relative', zIndex: 1 }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
           </Box>
-          <Box>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Typography sx={{
-              fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY,
-              fontSize: '1.2rem', lineHeight: 1, letterSpacing: '-0.02em',
+              fontFamily: '"Outfit", sans-serif', fontWeight: 900,
+              background: `linear-gradient(135deg, ${NAVY} 0%, #1D4ED8 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontSize: '1.4rem', lineHeight: 1.1, letterSpacing: '-0.02em',
+              textTransform: 'uppercase'
             }}>
-              SURAKSHA SARTHI
+              Suraksha Sarthi
             </Typography>
             <Typography sx={{
-              fontFamily: '"Outfit", sans-serif', color: '#64748B',
-              fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.02em',
+              fontFamily: '"Inter", sans-serif', color: '#64748B',
+              fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.03em'
             }}>
               Respond Together, Save Lives
             </Typography>
@@ -155,13 +179,13 @@ export default function Header() {
         <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5 }}>
           {user ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <IconButton sx={{ color: NAVY }}>
-                <Badge badgeContent={5} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}>
+              <IconButton sx={{ color: NAVY }} onClick={handleOpenNotifs}>
+                <Badge badgeContent={incidents.length} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}>
                   <NotificationsNoneRoundedIcon fontSize="small" />
                 </Badge>
               </IconButton>
               <Chip
-                label={isAdmin ? 'ADMIN' : 'USER'}
+                label={displayRole}
                 size="small"
                 sx={{
                   bgcolor: isAdmin ? '#FFF7ED' : '#EFF6FF',
@@ -297,7 +321,7 @@ export default function Header() {
                 <Typography sx={{ color: '#64748B', fontSize: '0.78rem', fontWeight: 600 }}>
                   Logged in as&nbsp;
                   <Box component="span" sx={{ color: isAdmin ? ORANGE : BLUE, fontWeight: 800 }}>
-                    {isAdmin ? 'Admin' : 'User'}
+                    {displayRole}
                   </Box>
                 </Typography>
               </Box>
@@ -332,6 +356,41 @@ export default function Header() {
           )}
         </Stack>
       </Drawer>
+
+      {/* NOTIFICATIONS POPOVER */}
+      <Popover
+        open={Boolean(notifAnchorEl)}
+        anchorEl={notifAnchorEl}
+        onClose={handleCloseNotifs}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        PaperProps={{ sx: { width: 320, borderRadius: 3, mt: 1, boxShadow: '0 10px 25px rgba(11,26,62,0.1)' } }}
+      >
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0' }}>
+          <Typography sx={{ fontWeight: 800, color: NAVY, fontFamily: '"Outfit", sans-serif' }}>Alerts & Incidents</Typography>
+          {incidents.length > 0 && (
+            <Button size="small" onClick={handleClearNotifs} sx={{ fontSize: '0.7rem', minWidth: 0, fontWeight: 700 }}>Clear All</Button>
+          )}
+        </Box>
+        <List sx={{ p: 0, maxHeight: 300, overflow: 'auto' }}>
+          {incidents.length === 0 ? (
+            <Box sx={{ p: 3, textAlign: 'center', color: '#94A3B8' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>No new notifications</Typography>
+            </Box>
+          ) : (
+            incidents.map((inc, i) => (
+              <ListItem key={inc._id || inc.id || i} divider sx={{ alignItems: 'flex-start' }}>
+                <ListItemText 
+                  primary={inc.title || inc.type || "New Incident Reported"} 
+                  secondary={inc.location || "Location pending"}
+                  primaryTypographyProps={{ sx: { fontWeight: 700, fontSize: '0.85rem', color: NAVY, mb: 0.5 } }}
+                  secondaryTypographyProps={{ sx: { fontSize: '0.75rem', color: '#64748B' } }}
+                />
+              </ListItem>
+            ))
+          )}
+        </List>
+      </Popover>
     </>
   );
 }
