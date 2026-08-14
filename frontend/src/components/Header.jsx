@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, IconButton, Typography, Drawer, Stack, Divider, Chip, Popover, List, ListItem, ListItemText } from '@mui/material';
+import { Box, Button, IconButton, Typography, Drawer, Stack, Divider, Chip, Popover, List, ListItem, ListItemText, Avatar } from '@mui/material';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchIncidents } from '../api/client';
@@ -23,6 +23,7 @@ import AssignmentRoundedIcon    from '@mui/icons-material/AssignmentRounded';
 import BusinessRoundedIcon      from '@mui/icons-material/BusinessRounded';
 import InfoRoundedIcon          from '@mui/icons-material/InfoRounded';
 import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
+import CameraAltRoundedIcon     from '@mui/icons-material/CameraAltRounded';
 import Badge from '@mui/material/Badge';
 
 // ── Design Tokens ─────────────────────────────────────────────────
@@ -46,14 +47,16 @@ export default function Header() {
     const handleScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener('scroll', handleScroll);
     
-    // Fetch recent incidents for notifications
-    fetchIncidents().then(data => {
-      const active = (data || []).filter(inc => inc.status !== 'resolved').slice(0, 5);
-      setIncidents(active);
-    }).catch(err => console.error("Failed to load incidents for notifications", err));
+    // Fetch recent incidents for notifications only if logged in
+    if (user) {
+      fetchIncidents().then(data => {
+        const active = (data || []).filter(inc => inc.status !== 'resolved').slice(0, 5);
+        setIncidents(active);
+      }).catch(err => console.error("Failed to load incidents for notifications", err));
+    }
 
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [user]);
 
   const handleOpenNotifs = (e) => setNotifAnchorEl(e.currentTarget);
   const handleCloseNotifs = () => setNotifAnchorEl(null);
@@ -62,22 +65,24 @@ export default function Header() {
     setNotifAnchorEl(null);
   };
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'agency_head';
-  const displayRole = user?.name ? user.name.toUpperCase() : (isAdmin ? 'ADMIN' : 'USER');
+  const isOfficial = user?.role === 'admin' || user?.role === 'agency_head' || user?.role === 'officer' || user?.role === 'sdrf_team';
+  const displayRole = user?.name ? user.name.toUpperCase() : (isOfficial ? user.role.replace('_', ' ').toUpperCase() : 'CITIZEN');
 
   const navItems = [
     { path: '/',               label: 'Home',            icon: <HomeRoundedIcon sx={{ fontSize: 18 }} /> },
     { path: '/map',            label: 'Live Map',        icon: <MapRoundedIcon sx={{ fontSize: 18 }} /> },
     { path: '/emergency',      label: 'Report Incident', icon: <AssignmentRoundedIcon sx={{ fontSize: 18 }} /> },
+    { path: '/updates',        label: 'Alerts',          icon: <CampaignRoundedIcon sx={{ fontSize: 18 }} /> },
+    { path: '/volunteer',      label: 'Volunteers',      icon: <GroupsRoundedIcon sx={{ fontSize: 18 }} /> },
+    { path: '/media',          label: 'Media',           icon: <CameraAltRoundedIcon sx={{ fontSize: 18 }} /> },
   ];
 
-  if (user) {
-    navItems.push({ path: '/updates',        label: 'Alerts',          icon: <CampaignRoundedIcon sx={{ fontSize: 18 }} /> });
-    navItems.push({ path: '/incidents',      label: 'Live Incidents',  icon: <WarningAmberRoundedIcon sx={{ fontSize: 18 }} /> });
-    navItems.push({ path: '/equipment',      label: 'Resources',       icon: <DirectionsCarRoundedIcon sx={{ fontSize: 18 }} />, dropdown: true });
-    navItems.push({ path: '/volunteer',      label: 'Volunteers',      icon: <GroupsRoundedIcon sx={{ fontSize: 18 }} /> });
-    navItems.push({ path: '/about',          label: 'About Us',        icon: <InfoRoundedIcon sx={{ fontSize: 18 }} /> });
+  if (isOfficial) {
+    navItems.push({ path: '/equipment',    label: 'Resources',       icon: <DirectionsCarRoundedIcon sx={{ fontSize: 18 }} />, dropdown: true });
+    navItems.push({ path: '/dashboard',    label: 'Dashboard',       icon: <DashboardRoundedIcon sx={{ fontSize: 18 }} /> });
   }
+
+  navItems.push({ path: '/about',          label: 'About Us',        icon: <InfoRoundedIcon sx={{ fontSize: 18 }} /> });
 
   const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
@@ -179,23 +184,31 @@ export default function Header() {
         <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5 }}>
           {user ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <IconButton sx={{ color: NAVY }} onClick={handleOpenNotifs}>
-                <Badge badgeContent={incidents.length} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}>
-                  <NotificationsNoneRoundedIcon fontSize="small" />
-                </Badge>
-              </IconButton>
-              <Chip
-                label={displayRole}
-                size="small"
+
+              <Avatar
+                component={RouterLink}
+                to="/profile"
+                src={user?.profilePic || user?.avatar}
+                alt={user?.name}
                 sx={{
-                  bgcolor: isAdmin ? '#FFF7ED' : '#EFF6FF',
-                  color: isAdmin ? ORANGE : BLUE,
+                  width: 34, height: 34,
+                  bgcolor: isOfficial ? '#FFF7ED' : '#EFF6FF',
+                  color: isOfficial ? ORANGE : BLUE,
                   fontFamily: '"Outfit", sans-serif',
-                  fontWeight: 800, fontSize: '0.62rem', letterSpacing: '0.06em',
-                  border: `1px solid ${isAdmin ? '#FED7AA' : '#BFDBFE'}`,
-                  height: 22,
+                  fontWeight: 800, fontSize: '1rem',
+                  border: `2px solid ${isOfficial ? '#FED7AA' : '#BFDBFE'}`,
+                  cursor: 'pointer', textDecoration: 'none',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    bgcolor: isOfficial ? '#FFEDD5' : '#DBEAFE',
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
+                    borderColor: isOfficial ? ORANGE : BLUE
+                  }
                 }}
-              />
+              >
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </Avatar>
 
               <IconButton
                 size="small"
@@ -213,11 +226,7 @@ export default function Header() {
             </Box>
           ) : (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <IconButton sx={{ color: NAVY }}>
-                <Badge badgeContent={2} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}>
-                  <NotificationsNoneRoundedIcon fontSize="small" />
-                </Badge>
-              </IconButton>
+
               <Button
                 component={RouterLink} to="/login"
                 startIcon={<AccountCircleRoundedIcon sx={{ fontSize: '1rem !important' }} />}
@@ -320,7 +329,7 @@ export default function Header() {
                 <AccountCircleRoundedIcon sx={{ color: '#94A3B8', fontSize: 18 }} />
                 <Typography sx={{ color: '#64748B', fontSize: '0.78rem', fontWeight: 600 }}>
                   Logged in as&nbsp;
-                  <Box component="span" sx={{ color: isAdmin ? ORANGE : BLUE, fontWeight: 800 }}>
+                  <Box component="span" sx={{ color: isOfficial ? ORANGE : BLUE, fontWeight: 800 }}>
                     {displayRole}
                   </Box>
                 </Typography>

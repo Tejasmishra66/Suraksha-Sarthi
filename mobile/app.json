@@ -23,7 +23,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "expo-camera",
+      "expo-location"
+    ],
+    "extra": {
+      "apiBaseUrl": "http://10.0.2.2:4002"
+    }
   }
 }

@@ -136,3 +136,15 @@ module.exports = {
   db,
   runMigrations
 };
+
+// Gracefully close the database on process exit
+function closeDb() {
+  try {
+    db.close();
+  } catch (_) {
+    // Already closed or never opened
+  }
+}
+process.on("exit", closeDb);
+process.on("SIGINT", () => { closeDb(); process.exit(0); });
+process.on("SIGTERM", () => { closeDb(); process.exit(0); });

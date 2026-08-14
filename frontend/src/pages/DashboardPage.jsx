@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, Paper, Grid, Tabs, Tab, Button, Chip, TextField, Alert, Divider } from '@mui/material';
+import { Box, Container, Typography, Paper, Grid, Tabs, Tab, Button, Chip, TextField, Alert, Divider, Select, MenuItem, FormControl, InputLabel, InputAdornment, IconButton, ToggleButtonGroup, ToggleButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,8 @@ import {
   fetchIntelPins,
   fetchAgencies,
   fetchAuditLogs,
-  exportIncidents
+  exportIncidents,
+  fetchResources
 } from '../api/client';
 
 import HpsdmaFeed from '../components/HpsdmaFeed';
@@ -24,6 +25,10 @@ import CellTowerRoundedIcon from '@mui/icons-material/CellTowerRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import MapRoundedIcon from '@mui/icons-material/MapRounded';
+import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded';
 
 const NAVY   = '#0B1A3E';
 const BLUE   = '#1D4ED8';
@@ -56,10 +61,23 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [volunteers, setVolunteers] = useState([]);
+  const [equipment, setEquipment] = useState([]);
   const [intel, setIntel] = useState([]);
   const [agencies, setAgencies] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filter States
+  const [incidentSearch, setIncidentSearch] = useState('');
+  const [incidentSeverity, setIncidentSeverity] = useState('All');
+  const [incidentSource, setIncidentSource] = useState('Local');
+  const [selectedIncident, setSelectedIncident] = useState(null);
+  
+  const [volunteerSearch, setVolunteerSearch] = useState('');
+  const [volunteerStatus, setVolunteerStatus] = useState('All');
+  
+  const [equipmentSearch, setEquipmentSearch] = useState('');
+  const [equipmentType, setEquipmentType] = useState('All');
 
   // Broadcast state
   const [broadcastMessage, setBroadcastMessage] = useState('');
@@ -68,10 +86,11 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [t, i, v, int, a, au] = await Promise.all([
+        const [t, i, v, eq, int, a, au] = await Promise.all([
           fetchTasks(),
           fetchIncidents(),
           fetchVolunteers(),
+          fetchResources(),
           fetchIntelPins(),
           fetchAgencies(),
           fetchAuditLogs()
@@ -79,6 +98,7 @@ export default function DashboardPage() {
         setTasks(t || []);
         setIncidents(i || []);
         setVolunteers(v || []);
+        setEquipment(eq || []);
         setIntel(int || []);
         setAgencies(a || []);
         setAuditLogs(au || []);
@@ -121,6 +141,31 @@ export default function DashboardPage() {
       setTimeout(() => setBroadcastStatus(''), 3000);
     }, 1500);
   };
+
+  const filteredIncidents = incidents.filter(inc => {
+    const searchLower = incidentSearch.toLowerCase();
+    const matchesSearch = (inc.disaster_type || '').toLowerCase().includes(searchLower) || 
+                          (inc.lat || '').toString().includes(searchLower) ||
+                          (inc.lng || '').toString().includes(searchLower);
+    const matchesSeverity = incidentSeverity === 'All' || inc.severity === incidentSeverity;
+    return matchesSearch && matchesSeverity;
+  });
+
+  const filteredVolunteers = volunteers.filter(vol => {
+    const searchLower = volunteerSearch.toLowerCase();
+    const matchesSearch = (vol.name || '').toLowerCase().includes(searchLower) || 
+                          (vol.skills || '').toLowerCase().includes(searchLower);
+    const volStatusStr = vol.active ? 'Active' : 'Inactive';
+    const matchesStatus = volunteerStatus === 'All' || volStatusStr === volunteerStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  const filteredEquipment = equipment.filter(eq => {
+    const searchLower = equipmentSearch.toLowerCase();
+    const matchesSearch = (eq.name || '').toLowerCase().includes(searchLower);
+    const matchesType = equipmentType === 'All' || eq.type === equipmentType;
+    return matchesSearch && matchesType;
+  });
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F4F6FB', py: { xs: 4, md: 5 } }}>
@@ -171,6 +216,7 @@ export default function DashboardPage() {
               <Tab icon={<AssignmentRoundedIcon sx={{ mb: { xs: 0, lg: '0 !important' }, mr: { xs: 1, lg: 1.5 } }} />} iconPosition="start" label="Tasks" />
               <Tab icon={<WarningRoundedIcon sx={{ mb: { xs: 0, lg: '0 !important' }, mr: { xs: 1, lg: 1.5 } }} />} iconPosition="start" label="Incidents" />
               <Tab icon={<GroupsRoundedIcon sx={{ mb: { xs: 0, lg: '0 !important' }, mr: { xs: 1, lg: 1.5 } }} />} iconPosition="start" label="Volunteers" />
+              <Tab icon={<DirectionsCarRoundedIcon sx={{ mb: { xs: 0, lg: '0 !important' }, mr: { xs: 1, lg: 1.5 } }} />} iconPosition="start" label="Equipment" />
               <Tab icon={<PlaceRoundedIcon sx={{ mb: { xs: 0, lg: '0 !important' }, mr: { xs: 1, lg: 1.5 } }} />} iconPosition="start" label="Field Intel" />
               <Tab icon={<BusinessRoundedIcon sx={{ mb: { xs: 0, lg: '0 !important' }, mr: { xs: 1, lg: 1.5 } }} />} iconPosition="start" label="Agencies" />
               <Tab icon={<CellTowerRoundedIcon sx={{ mb: { xs: 0, lg: '0 !important' }, mr: { xs: 1, lg: 1.5 } }} />} iconPosition="start" label="Broadcast" />
@@ -211,48 +257,117 @@ export default function DashboardPage() {
                 {/* 2. Incidents Panel */}
                 <TabPanel value={tabIndex} index={1}>
                   <Box sx={{ mb: 5 }}>
-                    <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', mb: 3 }}>
-                      Reported Incidents ({incidents.length})
-                    </Typography>
-                    <Grid container spacing={3}>
-                    {incidents.map((inc, i) => (
-                      <Grid item xs={12} md={6} lg={4} key={i}>
-                        <Paper elevation={0} sx={{ p: 3, border: '1px solid #FECACA', borderRadius: '16px', bgcolor: '#FEF2F2', height: '100%' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                            <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: '#991B1B', fontSize: '1.1rem' }}>{inc.disaster_type || 'Unknown Incident'}</Typography>
-                            <Chip size="small" label={inc.status || 'Active'} sx={{ bgcolor: '#FEE2E2', color: '#DC2626', fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '0.65rem', textTransform: 'uppercase', height: 22 }} />
-                          </Box>
-                          <Typography sx={{ color: '#7F1D1D', fontSize: '0.8rem', mb: 1, fontWeight: 500 }}>Location: {inc.lat}, {inc.lng}</Typography>
-                          <Typography sx={{ color: '#B91C1C', fontSize: '0.75rem', fontWeight: 600 }}>Reported: {new Date(inc.created_at || inc.timestamp).toLocaleString()}</Typography>
-                        </Paper>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                        <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', m: 0 }}>
+                          Reported Incidents
+                        </Typography>
+                        <ToggleButtonGroup
+                          color="primary"
+                          value={incidentSource}
+                          exclusive
+                          onChange={(e, val) => { if (val) setIncidentSource(val); }}
+                          size="small"
+                          sx={{ bgcolor: '#fff' }}
+                        >
+                          <ToggleButton value="Local" sx={{ textTransform: 'none', fontWeight: 700, px: 2 }}>Local ({filteredIncidents.length})</ToggleButton>
+                          <ToggleButton value="HPSDMA" sx={{ textTransform: 'none', fontWeight: 700, px: 2 }}>HPSDMA</ToggleButton>
+                        </ToggleButtonGroup>
+                      </Box>
+                      
+                      {incidentSource === 'Local' && (
+                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <TextField 
+                            size="small" 
+                            placeholder="Search incidents..." 
+                            value={incidentSearch}
+                            onChange={(e) => setIncidentSearch(e.target.value)}
+                            InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+                          />
+                          <FormControl size="small" sx={{ minWidth: 150 }}>
+                            <Select 
+                              value={incidentSeverity} 
+                              onChange={(e) => setIncidentSeverity(e.target.value)}
+                              sx={{ borderRadius: 2, bgcolor: '#fff' }}
+                              displayEmpty
+                            >
+                              <MenuItem value="All">All Severities</MenuItem>
+                              <MenuItem value="High">High</MenuItem>
+                              <MenuItem value="Medium">Medium</MenuItem>
+                              <MenuItem value="Low">Low</MenuItem>
+                              <MenuItem value="Info">Info</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      )}
+                    </Box>
+
+                    {incidentSource === 'Local' ? (
+                      <Grid container spacing={3}>
+                      {filteredIncidents.map((inc, i) => (
+                        <Grid item xs={12} md={6} lg={4} key={i}>
+                          <Paper 
+                            elevation={0} 
+                            onClick={() => setSelectedIncident(inc)}
+                            sx={{ p: 3, border: '1px solid', borderColor: inc.severity === 'High' ? '#FECACA' : '#E2E8F0', borderRadius: '16px', bgcolor: inc.severity === 'High' ? '#FEF2F2' : '#FFF', height: '100%', cursor: 'pointer', transition: 'all 0.2s', '&:hover': { boxShadow: '0 4px 15px rgba(0,0,0,0.05)', borderColor: BLUE } }}
+                          >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'center' }}>
+                              <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: inc.severity === 'High' ? '#991B1B' : NAVY, fontSize: '1.1rem' }}>{inc.disaster_type || 'Unknown Incident'}</Typography>
+                              <Chip size="small" label={inc.status || 'Active'} sx={{ bgcolor: inc.severity === 'High' ? '#FEE2E2' : '#F1F5F9', color: inc.severity === 'High' ? '#DC2626' : NAVY, fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '0.65rem', textTransform: 'uppercase', height: 22 }} />
+                            </Box>
+                            <Typography sx={{ color: inc.severity === 'High' ? '#7F1D1D' : '#64748B', fontSize: '0.8rem', mb: 1, fontWeight: 500 }}>Location: {inc.lat}, {inc.lng}</Typography>
+                            <Typography sx={{ color: inc.severity === 'High' ? '#B91C1C' : BLUE, fontSize: '0.75rem', fontWeight: 600 }}>Reported: {new Date(inc.created_at || inc.timestamp || Date.now()).toLocaleString()}</Typography>
+                          </Paper>
+                        </Grid>
+                      ))}
+                      {filteredIncidents.length === 0 && <Typography sx={{ color: '#94A3B8', fontWeight: 600 }}>No reported incidents match your filters.</Typography>}
                       </Grid>
-                    ))}
-                    {incidents.length === 0 && <Typography sx={{ color: '#94A3B8', fontWeight: 600 }}>No reported incidents.</Typography>}
-                    </Grid>
-                  </Box>
-                  
-                  <Divider sx={{ my: 4, borderColor: '#F1F5F9' }} />
-                  
-                  <Box>
-                    <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', mb: 3 }}>
-                      HPSDMA Extracted Incidents
-                    </Typography>
-                    <Paper elevation={0} sx={{ p: 0, borderRadius: '20px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-                      <HpsdmaFeed maxItems={12} showSummary={true} />
-                    </Paper>
+                    ) : (
+                      <Box>
+                        <Paper elevation={0} sx={{ p: 0, borderRadius: '20px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+                          <HpsdmaFeed maxItems={12} showSummary={true} />
+                        </Paper>
+                      </Box>
+                    )}
                   </Box>
                 </TabPanel>
 
                 {/* 3. Volunteers Panel */}
                 <TabPanel value={tabIndex} index={2}>
-                  <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', mb: 3 }}>
-                    Registered Volunteers ({volunteers.length})
-                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
+                    <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', m: 0 }}>
+                      Registered Volunteers ({filteredVolunteers.length})
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <TextField 
+                        size="small" 
+                        placeholder="Search by name or skills..." 
+                        value={volunteerSearch}
+                        onChange={(e) => setVolunteerSearch(e.target.value)}
+                        InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }}
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+                      />
+                      <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <Select 
+                          value={volunteerStatus} 
+                          onChange={(e) => setVolunteerStatus(e.target.value)}
+                          sx={{ borderRadius: 2, bgcolor: '#fff' }}
+                          displayEmpty
+                        >
+                          <MenuItem value="All">All Statuses</MenuItem>
+                          <MenuItem value="Active">Active</MenuItem>
+                          <MenuItem value="Inactive">Inactive</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </Box>
+                  </Box>
+
                   <Grid container spacing={3}>
-                    {volunteers.map((vol, i) => (
+                    {filteredVolunteers.map((vol, i) => (
                       <Grid item xs={12} sm={6} md={4} key={i}>
                         <Paper elevation={0} sx={{ p: 3, border: '1px solid #E2E8F0', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: BLUE }}>
+                          <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: vol.active ? '#ECFCCB' : '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: vol.active ? '#4D7C0F' : '#94A3B8' }}>
                             <GroupsRoundedIcon />
                           </Box>
                           <Box>
@@ -262,12 +377,63 @@ export default function DashboardPage() {
                         </Paper>
                       </Grid>
                     ))}
-                    {volunteers.length === 0 && <Typography sx={{ color: '#94A3B8', fontWeight: 600 }}>No volunteers registered.</Typography>}
+                    {filteredVolunteers.length === 0 && <Typography sx={{ color: '#94A3B8', fontWeight: 600 }}>No volunteers match your filters.</Typography>}
                   </Grid>
                 </TabPanel>
 
-                {/* 4. Intel Pins */}
+                {/* 4. Equipment Panel */}
                 <TabPanel value={tabIndex} index={3}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
+                    <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', m: 0 }}>
+                      Equipment Registry ({filteredEquipment.length})
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <TextField 
+                        size="small" 
+                        placeholder="Search equipment..." 
+                        value={equipmentSearch}
+                        onChange={(e) => setEquipmentSearch(e.target.value)}
+                        InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }}
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+                      />
+                      <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <Select 
+                          value={equipmentType} 
+                          onChange={(e) => setEquipmentType(e.target.value)}
+                          sx={{ borderRadius: 2, bgcolor: '#fff' }}
+                          displayEmpty
+                        >
+                          <MenuItem value="All">All Types</MenuItem>
+                          {[...new Set(equipment.map(e => e.type).filter(Boolean))].map(type => (
+                            <MenuItem key={type} value={type}>{type}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Box>
+                  </Box>
+
+                  <Grid container spacing={3}>
+                    {filteredEquipment.map((eq, i) => (
+                      <Grid item xs={12} sm={6} md={4} key={i}>
+                        <Paper elevation={0} sx={{ p: 3, border: '1px solid #E2E8F0', borderRadius: '16px' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <DirectionsCarRoundedIcon sx={{ color: BLUE, fontSize: 18 }} />
+                              <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, color: NAVY }}>{eq.name}</Typography>
+                            </Box>
+                            <Chip size="small" label={eq.status || 'Available'} sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '0.65rem', textTransform: 'uppercase', height: 22, bgcolor: eq.status === 'Deployed' ? '#FEF3C7' : '#DCFCE7', color: eq.status === 'Deployed' ? '#92400E' : '#166534' }} />
+                          </Box>
+                          <Typography sx={{ color: '#64748B', fontSize: '0.8rem', mb: 1 }}>Type: {eq.type || 'N/A'}</Typography>
+                          <Typography sx={{ color: '#94A3B8', fontSize: '0.75rem' }}>Total Quantity: {eq.quantity || 0}</Typography>
+                        </Paper>
+                      </Grid>
+                    ))}
+                    {filteredEquipment.length === 0 && <Typography sx={{ color: '#94A3B8', fontWeight: 600 }}>No equipment matches your filters.</Typography>}
+                  </Grid>
+                </TabPanel>
+
+                {/* 5. Intel Pins */}
+                <TabPanel value={tabIndex} index={4}>
                   <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', mb: 3 }}>
                     Field Intel Pins ({intel.length})
                   </Typography>
@@ -288,8 +454,8 @@ export default function DashboardPage() {
                   </Grid>
                 </TabPanel>
 
-                {/* 5. Agencies */}
-                <TabPanel value={tabIndex} index={4}>
+                {/* 6. Agencies */}
+                <TabPanel value={tabIndex} index={5}>
                   <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', mb: 3 }}>
                     Partner Agencies ({agencies.length})
                   </Typography>
@@ -311,8 +477,8 @@ export default function DashboardPage() {
                   </Grid>
                 </TabPanel>
 
-                {/* 6. Broadcast */}
-                <TabPanel value={tabIndex} index={5}>
+                {/* 7. Broadcast */}
+                <TabPanel value={tabIndex} index={6}>
                   <Box sx={{ maxWidth: 600 }}>
                     <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', mb: 1 }}>
                       Emergency Broadcast
@@ -345,8 +511,8 @@ export default function DashboardPage() {
                   </Box>
                 </TabPanel>
 
-                {/* 7. Exports */}
-                <TabPanel value={tabIndex} index={6}>
+                {/* 8. Exports */}
+                <TabPanel value={tabIndex} index={7}>
                   <Box sx={{ maxWidth: 600 }}>
                     <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', mb: 1 }}>
                       Data Exports
@@ -370,8 +536,8 @@ export default function DashboardPage() {
                   </Box>
                 </TabPanel>
 
-                {/* 8. Security Logs */}
-                <TabPanel value={tabIndex} index={7}>
+                {/* 9. Security Logs */}
+                <TabPanel value={tabIndex} index={8}>
                   <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.4rem', mb: 3 }}>
                     System Audit Logs ({auditLogs.length})
                   </Typography>
@@ -409,6 +575,64 @@ export default function DashboardPage() {
           </Box>
         </Paper>
       </Container>
+
+      {/* Incident Detail Modal */}
+      {selectedIncident && (
+        <Dialog open={Boolean(selectedIncident)} onClose={() => setSelectedIncident(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 2 }}>
+            <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: '1.3rem' }}>
+              Incident Details
+            </Typography>
+            <IconButton onClick={() => setSelectedIncident(null)} size="small" sx={{ bgcolor: '#F1F5F9' }}>
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+              <Box>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', mb: 0.5 }}>EMERGENCY TYPE</Typography>
+                <Typography sx={{ fontSize: '1.1rem', fontWeight: 800, color: NAVY }}>{selectedIncident.disaster_type || 'Unknown'}</Typography>
+              </Box>
+              <Box>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', mb: 0.5 }}>SEVERITY & STATUS</Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Chip size="small" label={`Severity: ${selectedIncident.severity || 'Unknown'}`} sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '0.75rem' }} />
+                  <Chip size="small" label={`Status: ${selectedIncident.status || 'Active'}`} sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, fontSize: '0.75rem' }} />
+                </Box>
+              </Box>
+              <Box>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', mb: 0.5 }}>REPORTED BY</Typography>
+                <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: NAVY }}>{selectedIncident.mobile_number || 'N/A'}</Typography>
+              </Box>
+              <Box>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', mb: 0.5 }}>LOCATION (LAT, LNG)</Typography>
+                <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: NAVY }}>{selectedIncident.lat}, {selectedIncident.lng}</Typography>
+                <Typography sx={{ fontSize: '0.85rem', color: '#64748B' }}>{selectedIncident.location || 'No address provided'}</Typography>
+              </Box>
+              <Box>
+                <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', mb: 0.5 }}>DESCRIPTION</Typography>
+                <Typography sx={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.6 }}>{selectedIncident.description || 'No additional details provided.'}</Typography>
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 2, px: 3, justifyContent: 'space-between' }}>
+            <Button onClick={() => setSelectedIncident(null)} sx={{ color: '#64748B', fontWeight: 700, textTransform: 'none' }}>
+              Close
+            </Button>
+            <Button 
+              variant="contained" 
+              startIcon={<MapRoundedIcon />}
+              onClick={() => {
+                navigate(`/map?lat=${selectedIncident.lat}&lng=${selectedIncident.lng}`);
+              }}
+              sx={{ bgcolor: BLUE, color: '#fff', fontWeight: 700, textTransform: 'none', borderRadius: '10px', px: 3 }}
+            >
+              Go to Map
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
     </Box>
   );
 }

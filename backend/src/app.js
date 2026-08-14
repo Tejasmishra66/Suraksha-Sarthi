@@ -99,6 +99,13 @@ app.use("/mutes", authMiddleware, muteRoutes);
 app.use("/audit", authMiddleware, auditRoutes);
 app.use("/push", pushRoutes);
 app.use("/hpsdma", hpsdmaRoutes);
+app.use("/export", authMiddleware, require("./routes/exportRoutes"));
+app.use("/guides", require("./routes/guides"));
+
+// 404 handler for undefined API routes
+app.use((req, res) => {
+  res.status(404).json({ error: `Route ${req.method} ${req.path} not found` });
+});
 
 app.use(errorHandler);
 

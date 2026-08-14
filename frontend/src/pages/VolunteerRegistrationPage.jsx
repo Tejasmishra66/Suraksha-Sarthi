@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Box, Button, Container, TextField, Typography, Paper, Alert, Divider, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, Button, Container, TextField, Typography, Paper, Alert, Divider, FormControl, InputLabel, Select, MenuItem, IconButton } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import HandshakeRoundedIcon from '@mui/icons-material/HandshakeRounded';
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import LogoIcon from '../components/LogoIcon';
 
@@ -18,14 +19,16 @@ export default function VolunteerRegistrationPage() {
   const [capabilities, setCapabilities] = useState('');
   const [terrain, setTerrain] = useState('');
   const [place, setPlace] = useState('');
+  const [idProof, setIdProof] = useState('');
+  const [fileName, setFileName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!capabilities || !place) {
-      setError('Please provide your core capabilities and your location/place.');
+    if (!capabilities || !place || !idProof || !fileName) {
+      setError('Please provide your capabilities, location, ID proof, and upload the ID document.');
       return;
     }
 
@@ -41,6 +44,7 @@ export default function VolunteerRegistrationPage() {
         capabilities,
         terrain_restrictions: terrain,
         place,
+        id_proof: idProof,
         active: true
       };
 
@@ -79,8 +83,11 @@ export default function VolunteerRegistrationPage() {
       <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: { xs: 2, md: 4 } }}>
         <Paper elevation={0} sx={{ width: '100%', maxWidth: 540, p: { xs: 3, md: 5 }, borderRadius: 4, border: '1px solid #E2E8F0' }}>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-            <Box sx={{ p: 1, bgcolor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 1.5, display: 'flex' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+            <IconButton onClick={() => navigate(-1)} sx={{ mr: 1, color: NAVY, bgcolor: '#F1F5F9' }}>
+              <ArrowBackRoundedIcon />
+            </IconButton>
+            <Box sx={{ p: 1, bgcolor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 1.5, display: 'flex', mr: 1.5 }}>
               <HandshakeRoundedIcon sx={{ color: BLUE, fontSize: 24 }} />
             </Box>
             <Box>
@@ -143,6 +150,27 @@ export default function VolunteerRegistrationPage() {
               onChange={(e) => setTerrain(e.target.value)}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
             />
+
+            <TextField
+              label="Aadhaar / Work Proof ID"
+              placeholder="e.g. Aadhaar No. or Internship ID"
+              variant="outlined"
+              fullWidth
+              margin="normal"
+              value={idProof}
+              onChange={(e) => setIdProof(e.target.value)}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+            />
+            
+            <Box sx={{ mt: 1, p: 2, border: '1px dashed #CBD5E1', borderRadius: 2, bgcolor: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="body2" color="#64748B" fontWeight={600}>
+                {fileName ? fileName : 'Upload ID Document (Required)'}
+              </Typography>
+              <Button variant="outlined" component="label" size="small" sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, borderColor: '#CBD5E1', color: NAVY }}>
+                Browse File
+                <input type="file" hidden onChange={(e) => setFileName(e.target.files[0]?.name || '')} />
+              </Button>
+            </Box>
 
             <Button
               type="submit"

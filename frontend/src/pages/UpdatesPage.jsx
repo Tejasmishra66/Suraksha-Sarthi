@@ -41,13 +41,68 @@ const SEVERITY_LEVELS = {
 
 export default function UpdatesPage() {
   const [bulletins, setBulletins] = useState([]);
+  const [liveAlerts, setLiveAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const alertsPerPage = 6;
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('All Alerts');
+  const [filterSeverity, setFilterSeverity] = useState({ High: false, Medium: false, Low: false, Info: false });
+  const [filterDistrict, setFilterDistrict] = useState('all');
+  const [filterDate, setFilterDate] = useState('all');
+  const [viewTab, setViewTab] = useState('All');
+
+  const fetchData = async () => {
+    try {
+      // Fetch internal bulletins
+      const bData = await fetchBulletins();
+      setBulletins(bData || []);
+
+      // Fetch live HPSDMA incidents to act as real-time alerts
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002'}/hpsdma/incidents?limit=50`);
+      if (res.ok) {
+        const hData = await res.json();
+        const mappedAlerts = (hData.incidents || []).map(inc => {
+          let severity = 'Info';
+          if (inc.humanLoss > 0) severity = 'High';
+          else if (inc.humanInjured > 0 || inc.type.toLowerCase().includes('fire')) severity = 'Medium';
+          else if (inc.type.toLowerCase().includes('road')) severity = 'Low';
+
+          let alertType = 'Disaster Alerts';
+          const t = inc.type.toLowerCase();
+          if (t.includes('flood') || t.includes('cloudburst') || t.includes('lightning')) alertType = 'Weather Alerts';
+          else if (t.includes('road')) alertType = 'Road & Traffic';
+
+          return {
+            id: inc.id,
+            title: `${inc.type} in ${inc.district}`,
+            type: alertType,
+            severity,
+            desc: `A ${inc.type.toLowerCase()} incident has been reported in ${inc.tehsil !== '-' ? inc.tehsil + ', ' : ''}${inc.district}. ${inc.humanLoss > 0 || inc.humanInjured > 0 ? 'Casualties reported.' : 'Please stay cautious.'}`,
+            loc: inc.district,
+            lat: inc.lat,
+            lon: inc.lon,
+            source: 'HPSDMA',
+            rawDate: new Date(inc.date || Date.now()),
+            time: new Date(inc.date || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ', ' + new Date(inc.date || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          };
+        });
+        setLiveAlerts(mappedAlerts);
+      }
+    } catch (e) {
+      console.error('Error fetching alerts:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchBulletins()
-      .then((d) => setBulletins(d || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    fetchData();
+    // Auto-fetch alerts every 2 minutes
+    const intervalId = setInterval(fetchData, 2 * 60 * 1000);
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleSOS = () => {
@@ -64,23 +119,60 @@ export default function UpdatesPage() {
     );
   };
 
-  // Combine mock data and real data for UI completeness
-  const displayAlerts = [
+  // Combine and sort real data
+  const combinedAlerts = [
     ...bulletins.map(b => ({
+      id: b.id || Math.random(),
       title: b.title || 'Official Advisory',
       type: b.type || 'Advisory',
       severity: b.severity || 'Medium',
       desc: b.message || b.content || b.description || 'No details provided.',
       loc: b.location || b.district || 'All Districts',
+      source: 'Bulletin',
+      rawDate: new Date(b.created_at || b.timestamp || Date.now()),
       time: new Date(b.created_at || b.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) + ', ' + new Date(b.created_at || b.timestamp || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
     })),
-    { title: 'Flood Warning in Mandi', type: 'Disaster Alerts', severity: 'High', desc: 'Heavy rainfall expected in Mandi district over the next 24 hours. Residents living near riverbanks are advised to stay alert.', loc: 'Mandi District', time: '10:30 AM, 03 Jun 2025' },
-    { title: 'Landslide Alert in Kullu', type: 'Disaster Alerts', severity: 'Medium', desc: 'Landslide risk in NH-3 and surrounding hilly areas. Avoid unnecessary travel. Drive with caution.', loc: 'Kullu District', time: '09:45 AM, 03 Jun 2025' },
-    { title: 'Road Block on NH-3', type: 'Road & Traffic', severity: 'Low', desc: 'Landslide debris near Sissu has blocked NH-3. Traffic moving from Manali to Leh may face delays.', loc: 'Lahaul & Spiti', time: '09:10 AM, 03 Jun 2025' },
-    { title: 'SDRF Advisory', type: 'Advisory', severity: 'Info', desc: 'Move to safer places. Avoid river banks and low-lying areas due to heavy rainfall.', loc: 'All Districts', time: '08:30 AM, 03 Jun 2025' },
-    { title: 'Heavy Rainfall Alert', type: 'Weather Alerts', severity: 'Medium', desc: 'Moderate to heavy rainfall expected in Chamba, Kangra and parts of Mandi.', loc: 'Chamba, Kangra & Mandi', time: '07:45 AM, 03 Jun 2025' },
-    { title: 'Heat Wave Advisory', type: 'Weather Alerts', severity: 'Low', desc: 'High temperature likely in Una and Bilaspur districts. Stay hydrated and avoid direct sunlight.', loc: 'Una & Bilaspur', time: '06:30 AM, 03 Jun 2025' }
-  ];
+    ...liveAlerts
+  ].sort((a, b) => b.rawDate - a.rawDate);
+
+  // Dynamic counts for filters
+  const counts = { type: {}, severity: {} };
+  combinedAlerts.forEach(a => {
+    counts.type[a.type] = (counts.type[a.type] || 0) + 1;
+    counts.severity[a.severity] = (counts.severity[a.severity] || 0) + 1;
+  });
+
+  // Apply filters
+  const displayAlerts = combinedAlerts.filter(alert => {
+    if (searchQuery && !alert.title.toLowerCase().includes(searchQuery.toLowerCase()) && !alert.desc.toLowerCase().includes(searchQuery.toLowerCase()) && !alert.loc.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filterType !== 'All Alerts' && alert.type !== filterType) return false;
+    
+    const activeSeverities = Object.keys(filterSeverity).filter(k => filterSeverity[k]);
+    if (activeSeverities.length > 0 && !activeSeverities.includes(alert.severity)) return false;
+    
+    if (filterDistrict !== 'all' && alert.loc.toLowerCase() !== filterDistrict.toLowerCase()) return false;
+    
+    if (filterDate === 'today') {
+      const today = new Date();
+      if (alert.rawDate.toDateString() !== today.toDateString()) return false;
+    } else if (filterDate === 'week') {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      if (alert.rawDate < weekAgo) return false;
+    }
+    
+    if (viewTab === 'Advisories' && alert.source !== 'Bulletin') return false;
+    if (viewTab === 'Live Incidents' && alert.source !== 'HPSDMA') return false;
+
+    return true;
+  });
+
+  const distinctDistricts = [...new Set(combinedAlerts.map(a => a.loc).filter(d => d && d !== 'All Districts'))].sort();
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterType, filterSeverity, filterDistrict, filterDate]);
 
   return (
     <Box sx={{ bgcolor: '#F8FAFC', minHeight: 'calc(100vh - 66px)', display: 'flex', flexDirection: 'column' }}>
@@ -98,18 +190,18 @@ export default function UpdatesPage() {
             {/* Filters */}
             <Box sx={{ bgcolor: '#FFF', borderRadius: '0 0 12px 12px', border: '1px solid #E2E8F0', borderTop: 'none', p: 2.5, mb: 3 }}>
               <Typography sx={{ fontSize: '0.75rem', fontWeight: 900, color: NAVY, mb: 1, textTransform: 'uppercase' }}>Search Alerts</Typography>
-              <TextField fullWidth placeholder="Search by keyword, location..." size="small" sx={{ mb: 3, '& .MuiOutlinedInput-root': { borderRadius: 2 } }} InputProps={{ endAdornment: <SearchRoundedIcon sx={{color:'#94A3B8', fontSize: 18}} /> }} />
+              <TextField value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} fullWidth placeholder="Search by keyword, location..." size="small" sx={{ mb: 3, '& .MuiOutlinedInput-root': { borderRadius: 2 } }} InputProps={{ endAdornment: <SearchRoundedIcon sx={{color:'#94A3B8', fontSize: 18}} /> }} />
 
               <Typography sx={{ fontSize: '0.75rem', fontWeight: 900, color: NAVY, mb: 1.5, textTransform: 'uppercase' }}>Alert Type</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 3 }}>
                 {[
-                  { label: 'All Alerts', icon: <NotificationsRoundedIcon />, count: 24, active: true },
-                  { label: 'Weather Alerts', icon: <CloudRoundedIcon />, count: 8 },
-                  { label: 'Disaster Alerts', icon: <WarningAmberRoundedIcon />, count: 7 },
-                  { label: 'Road & Traffic', icon: <TrafficRoundedIcon />, count: 4 },
-                  { label: 'Advisory', icon: <InfoOutlinedIcon />, count: 5 },
+                  { label: 'All Alerts', icon: <NotificationsRoundedIcon />, count: combinedAlerts.length, active: filterType === 'All Alerts' },
+                  { label: 'Weather Alerts', icon: <CloudRoundedIcon />, count: counts.type['Weather Alerts'] || 0, active: filterType === 'Weather Alerts' },
+                  { label: 'Disaster Alerts', icon: <WarningAmberRoundedIcon />, count: counts.type['Disaster Alerts'] || 0, active: filterType === 'Disaster Alerts' },
+                  { label: 'Road & Traffic', icon: <TrafficRoundedIcon />, count: counts.type['Road & Traffic'] || 0, active: filterType === 'Road & Traffic' },
+                  { label: 'Advisory', icon: <InfoOutlinedIcon />, count: counts.type['Advisory'] || 0, active: filterType === 'Advisory' },
                 ].map((t, i) => (
-                  <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2, cursor: 'pointer', bgcolor: t.active ? LIGHT_BLUE : 'transparent', color: t.active ? BLUE : NAVY, '&:hover': { bgcolor: t.active ? LIGHT_BLUE : '#F1F5F9' } }}>
+                  <Box onClick={() => setFilterType(t.label)} key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2, cursor: 'pointer', bgcolor: t.active ? LIGHT_BLUE : 'transparent', color: t.active ? BLUE : NAVY, '&:hover': { bgcolor: t.active ? LIGHT_BLUE : '#F1F5F9' } }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       {React.cloneElement(t.icon, { sx: { fontSize: 16, color: t.active ? BLUE : '#64748B' } })}
                       <Typography sx={{ fontSize: '0.85rem', fontWeight: t.active ? 800 : 600 }}>{t.label}</Typography>
@@ -122,36 +214,44 @@ export default function UpdatesPage() {
               <Typography sx={{ fontSize: '0.75rem', fontWeight: 900, color: NAVY, mb: 1, textTransform: 'uppercase' }}>Severity</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 3 }}>
                 {[
-                  { label: 'High', color: RED, count: 8 },
-                  { label: 'Medium', color: ORANGE, count: 9 },
-                  { label: 'Low', color: BLUE, count: 5 },
-                  { label: 'Info', color: GREEN, count: 2 },
+                  { label: 'High', color: RED, count: counts.severity['High'] || 0, key: 'High' },
+                  { label: 'Medium', color: ORANGE, count: counts.severity['Medium'] || 0, key: 'Medium' },
+                  { label: 'Low', color: BLUE, count: counts.severity['Low'] || 0, key: 'Low' },
+                  { label: 'Info', color: GREEN, count: counts.severity['Info'] || 0, key: 'Info' },
                 ].map((s, i) => (
                   <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <FormControlLabel control={<Checkbox size="small" sx={{ color: '#CBD5E1', '&.Mui-checked': { color: s.color } }} />} label={<Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: NAVY }}>{s.label}</Typography>} />
+                    <FormControlLabel 
+                      control={<Checkbox checked={filterSeverity[s.key]} onChange={(e) => setFilterSeverity({...filterSeverity, [s.key]: e.target.checked})} size="small" sx={{ color: '#CBD5E1', '&.Mui-checked': { color: s.color } }} />} 
+                      label={<Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: NAVY }}>{s.label}</Typography>} 
+                    />
                     <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#94A3B8' }}>{s.count}</Typography>
                   </Box>
                 ))}
               </Box>
 
               <Typography sx={{ fontSize: '0.75rem', fontWeight: 900, color: NAVY, mb: 1, textTransform: 'uppercase' }}>District</Typography>
-              <Select fullWidth size="small" defaultValue="all" sx={{ mb: 3, borderRadius: 2 }}>
+              <Select value={filterDistrict} onChange={(e) => setFilterDistrict(e.target.value)} fullWidth size="small" sx={{ mb: 3, borderRadius: 2 }}>
                 <MenuItem value="all">All Districts</MenuItem>
-                <MenuItem value="shimla">Shimla</MenuItem>
-                <MenuItem value="kullu">Kullu</MenuItem>
+                {distinctDistricts.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
               </Select>
 
               <Typography sx={{ fontSize: '0.75rem', fontWeight: 900, color: NAVY, mb: 1, textTransform: 'uppercase' }}>Date Range</Typography>
-              <Select fullWidth size="small" defaultValue="all" sx={{ mb: 4, borderRadius: 2 }}>
+              <Select value={filterDate} onChange={(e) => setFilterDate(e.target.value)} fullWidth size="small" sx={{ mb: 4, borderRadius: 2 }}>
                 <MenuItem value="all">All Time</MenuItem>
                 <MenuItem value="today">Today</MenuItem>
                 <MenuItem value="week">This Week</MenuItem>
               </Select>
 
-              <Button variant="contained" fullWidth sx={{ borderRadius: 2, py: 1.2, bgcolor: BLUE, fontWeight: 800, fontSize: '0.8rem', mb: 1, textTransform: 'none', '&:hover': { bgcolor: '#1D4ED8' } }}>
-                <FilterAltRoundedIcon sx={{ fontSize: 16, mr: 1 }} /> Apply Filters
-              </Button>
-              <Button variant="text" fullWidth sx={{ borderRadius: 2, py: 1, color: '#64748B', fontWeight: 700, fontSize: '0.8rem', textTransform: 'none' }}>
+              <Button 
+                onClick={() => {
+                  setSearchQuery('');
+                  setFilterType('All Alerts');
+                  setFilterSeverity({ High: false, Medium: false, Low: false, Info: false });
+                  setFilterDistrict('all');
+                  setFilterDate('all');
+                }}
+                variant="text" fullWidth sx={{ borderRadius: 2, py: 1, color: '#64748B', fontWeight: 700, fontSize: '0.8rem', textTransform: 'none' }}
+              >
                 <RestartAltRoundedIcon sx={{ fontSize: 16, mr: 1 }} /> Reset Filters
               </Button>
             </Box>
@@ -159,13 +259,13 @@ export default function UpdatesPage() {
 
           {/* ══ CENTER AREA ══ */}
           <Grid item xs={12} lg={6.5}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: LIGHT_BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', color: BLUE }}>
                   <NotificationsRoundedIcon sx={{ fontSize: 20 }} />
                 </Box>
                 <Box>
-                  <Typography sx={{ fontSize: '1.2rem', fontWeight: 900, color: NAVY, mb: 0.1 }}>ALL ALERTS</Typography>
+                  <Typography sx={{ fontSize: '1.2rem', fontWeight: 900, color: NAVY, mb: 0.1 }}>ALERTS & INCIDENTS</Typography>
                   <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500 }}>Stay informed about the latest alerts and advisories</Typography>
                 </Box>
               </Box>
@@ -178,8 +278,26 @@ export default function UpdatesPage() {
               </Box>
             </Box>
 
+            {/* Tabs for Alerts vs Incidents */}
+            <Box sx={{ display: 'flex', gap: 1, mb: 3, borderBottom: '1px solid #E2E8F0', pb: 1.5 }}>
+              {['All', 'Advisories', 'Live Incidents'].map(tab => (
+                <Button 
+                  key={tab} 
+                  onClick={() => { setViewTab(tab); setCurrentPage(1); }}
+                  sx={{ 
+                    borderRadius: 5, px: 3, py: 0.5, fontSize: '0.8rem', fontWeight: 800, textTransform: 'none',
+                    bgcolor: viewTab === tab ? BLUE : 'transparent',
+                    color: viewTab === tab ? '#FFF' : '#64748B',
+                    '&:hover': { bgcolor: viewTab === tab ? BLUE : '#F1F5F9' }
+                  }}
+                >
+                  {tab}
+                </Button>
+              ))}
+            </Box>
+
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
-              {displayAlerts.map((alert, i) => {
+              {displayAlerts.slice((currentPage - 1) * alertsPerPage, currentPage * alertsPerPage).map((alert, i) => {
                 const s = SEVERITY_LEVELS[alert.severity] || SEVERITY_LEVELS.Info;
                 // Determine icon based on alert type
                 let typeIcon = <InfoOutlinedIcon />;
@@ -215,24 +333,45 @@ export default function UpdatesPage() {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#64748B' }}>
                         <Typography sx={{ fontSize: '0.7rem', fontWeight: 600 }}>{alert.time}</Typography>
                       </Box>
+                      {alert.lat && alert.lon && (
+                        <Button 
+                          component={RouterLink} 
+                          to={`/map?lat=${alert.lat}&lng=${alert.lon}`}
+                          size="small"
+                          sx={{ mt: 0.5, fontSize: '0.7rem', fontWeight: 700, borderRadius: 2, bgcolor: LIGHT_BLUE, color: BLUE, '&:hover': { bgcolor: '#DBEAFE' } }}
+                        >
+                          View on Map
+                        </Button>
+                      )}
                     </Box>
 
-                    <KeyboardArrowRightRoundedIcon sx={{ color: '#94A3B8' }} />
                   </Box>
                 );
               })}
             </Box>
 
-            {/* Pagination Mock */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 4 }}>
-              <Box sx={{ width: 32, height: 32, borderRadius: 1.5, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', cursor: 'pointer' }}>{'<'}</Box>
-              <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: BLUE, color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, cursor: 'pointer' }}>1</Box>
-              <Box sx={{ width: 32, height: 32, borderRadius: 1.5, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: NAVY, fontWeight: 800, cursor: 'pointer' }}>2</Box>
-              <Box sx={{ width: 32, height: 32, borderRadius: 1.5, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: NAVY, fontWeight: 800, cursor: 'pointer' }}>3</Box>
-              <Typography sx={{ px: 1, color: '#94A3B8', display: 'flex', alignItems: 'center' }}>...</Typography>
-              <Box sx={{ width: 32, height: 32, borderRadius: 1.5, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: NAVY, fontWeight: 800, cursor: 'pointer' }}>6</Box>
-              <Box sx={{ width: 32, height: 32, borderRadius: 1.5, border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: NAVY, fontWeight: 800, cursor: 'pointer' }}>{'>'}</Box>
-            </Box>
+            {/* Functional Pagination */}
+            {displayAlerts.length > 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mb: 4 }}>
+                <Button 
+                  disabled={currentPage === 1} 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  sx={{ minWidth: 40, height: 40, borderRadius: 1.5, border: '1px solid #E2E8F0', color: currentPage === 1 ? '#CBD5E1' : NAVY, fontWeight: 800 }}
+                >
+                  {'<'}
+                </Button>
+                <Typography sx={{ fontWeight: 800, color: NAVY, fontSize: '0.9rem' }}>
+                  Page {currentPage} of {Math.ceil(displayAlerts.length / alertsPerPage)}
+                </Typography>
+                <Button 
+                  disabled={currentPage === Math.ceil(displayAlerts.length / alertsPerPage)} 
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(displayAlerts.length / alertsPerPage), p + 1))}
+                  sx={{ minWidth: 40, height: 40, borderRadius: 1.5, border: '1px solid #E2E8F0', color: currentPage === Math.ceil(displayAlerts.length / alertsPerPage) ? '#CBD5E1' : NAVY, fontWeight: 800 }}
+                >
+                  {'>'}
+                </Button>
+              </Box>
+            )}
           </Grid>
 
           {/* ══ RIGHT SIDEBAR ══ */}

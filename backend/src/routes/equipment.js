@@ -56,4 +56,21 @@ router.post("/:id/scan", (req, res) => {
   }
 });
 
+// PATCH /equipment/:id/status - Update status for mobile QR scanner
+router.patch("/:id/status", (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  try {
+    const updateStatus = db.prepare(`
+      UPDATE equipment
+      SET status = ?
+      WHERE id = ? OR qr_code = ?
+    `);
+    updateStatus.run(status, id, id);
+    res.json({ success: true, message: "Equipment status updated" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update status" });
+  }
+});
+
 module.exports = router;

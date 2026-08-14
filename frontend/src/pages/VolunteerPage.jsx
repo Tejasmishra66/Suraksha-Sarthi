@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Grid, Typography, Button, Divider, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Avatar
+  TableContainer, TableHead, TableRow, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, IconButton
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 
 // Icons
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
@@ -57,6 +59,9 @@ const EVENTS = [
 export default function VolunteerPage() {
   const [volunteers, setVolunteers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  
+  const isOfficial = user?.role === 'admin' || user?.role === 'agency_head' || user?.role === 'officer' || user?.role === 'sdrf_team';
 
   useEffect(() => {
     fetchVolunteers()
@@ -185,52 +190,7 @@ export default function VolunteerPage() {
               ))}
             </Grid>
 
-            {/* Recent Volunteers */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography sx={{ fontSize: '1.1rem', fontWeight: 900, color: NAVY }}>Recent Volunteers</Typography>
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: BLUE, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>View All Volunteers</Typography>
-            </Box>
-            <Box sx={{ bgcolor: '#FFF', borderRadius: 3, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead sx={{ bgcolor: '#F8FAFC' }}>
-                    <TableRow>
-                      <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>NAME</TableCell>
-                      <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>LOCATION</TableCell>
-                      <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>SKILLS</TableCell>
-                      <TableCell sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>JOINED ON</TableCell>
-                      <TableCell align="center" sx={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>STATUS</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {volunteers.map(v => ({ 
-                      name: v.name, 
-                      loc: v.place || v.district || 'Unknown', 
-                      skills: v.capabilities || v.skills || 'General', 
-                      date: new Date(v.created_at || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/,/g, ''), 
-                      status: v.active ? 'Active' : 'Inactive' 
-                    })).slice(0, 5).map((row, i) => (
-                      <TableRow key={i} sx={{ '&:last-child td, &:last-child th': { border: 0 }, '&:hover': { bgcolor: '#F8FAFC' } }}>
-                        <TableCell sx={{ py: 1.5 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Avatar sx={{ width: 26, height: 26, bgcolor: BLUE, fontSize: '0.75rem', fontWeight: 700 }}>{row.name.charAt(0)}</Avatar>
-                            <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: NAVY }}>{row.name}</Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>{row.loc}</TableCell>
-                        <TableCell>
-                          <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: BLUE, bgcolor: LIGHT_BLUE, display: 'inline-block', px: 1, py: 0.3, borderRadius: 1 }}>{row.skills}</Typography>
-                        </TableCell>
-                        <TableCell sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748B' }}>{row.date}</TableCell>
-                        <TableCell align="center">
-                          <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: row.status === 'Active' ? '#10B981' : '#64748B' }}>{row.status}</Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
+
           </Grid>
 
 

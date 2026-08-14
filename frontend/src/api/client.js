@@ -40,12 +40,15 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Don't intercept 401s from the login endpoint, as that's expected for bad credentials.
-    // The login page will handle that error itself.
+    // Don't intercept 401s from the login endpoint.
     if (error.response && error.response.status === 401 && error.config.url !== '/auth/login') {
-      // Token has expired or is invalid on a protected route
-      clearAuthToken();
-      window.location.href = '/login'; // Redirect to login page
+      // Only redirect if the user actually had a token that expired, 
+      // preventing infinite redirect loops for public pages hitting protected APIs.
+      const token = getStoredToken();
+      if (token) {
+        clearAuthToken();
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

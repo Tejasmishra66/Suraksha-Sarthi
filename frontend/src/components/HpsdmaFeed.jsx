@@ -54,7 +54,7 @@ function formatDate(iso) {
 }
 
 /* ── Single incident card ── */
-function IncidentCard({ inc, layout = 'grid' }) {
+export function IncidentCard({ inc, layout = 'grid', onClick }) {
   const meta = getTypeMeta(inc.type);
   const hasLoss = inc.humanLoss > 0 || inc.humanInjured > 0 || inc.humanMissing > 0;
   let severity = 'Info';
@@ -64,9 +64,47 @@ function IncidentCard({ inc, layout = 'grid' }) {
   else if (inc.humanInjured > 0 || inc.type.toLowerCase().includes('fire')) { severity = 'Medium'; sevColor = '#D97706'; sevBg = '#FFFBEB'; }
   else if (inc.type.toLowerCase().includes('road')) { severity = 'Low'; sevColor = '#2563EB'; sevBg = '#EFF6FF'; }
 
+  if (layout === 'sidebar') {
+    return (
+      <Box 
+        onClick={onClick}
+        sx={{ 
+          bgcolor: '#FFF', borderRadius: '24px', border: '1px solid #E2E8F0', p: 2, mb: 1.5,
+          display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', transition: 'all 0.2s',
+          '&:hover': { borderColor: '#1D4ED8', boxShadow: '0 4px 12px rgba(29, 78, 216, 0.08)' }
+        }}
+      >
+        {/* Type Icon */}
+        <Box sx={{ width: 44, height: 44, borderRadius: '50%', bgcolor: meta.bg, color: meta.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.2rem' }}>
+          {meta.emoji}
+        </Box>
+        
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+            <Typography sx={{ fontSize: '0.9rem', fontWeight: 900, color: NAVY }} noWrap>{inc.type}</Typography>
+            <Box sx={{ bgcolor: sevBg, color: sevColor, fontSize: '0.55rem', fontWeight: 900, px: 0.8, py: 0.2, borderRadius: 1.5, letterSpacing: '0.05em', textTransform: 'uppercase', border: `1px solid ${sevColor}40` }}>
+              {severity}
+            </Box>
+          </Box>
+          <Typography sx={{ fontSize: '0.75rem', color: '#475569', fontWeight: 500, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {inc.district}{inc.tehsil && inc.tehsil !== '-' ? `, ${inc.tehsil}` : ''} - {hasLoss ? `${inc.humanLoss} Deaths, ${inc.humanInjured} Injured` : 'Reported Incident'}
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5, flexShrink: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#64748B' }}>
+            <LocationOnRoundedIcon sx={{ fontSize: 12 }} />
+            <Typography sx={{ fontSize: '0.65rem', fontWeight: 600 }}>{inc.district}</Typography>
+          </Box>
+          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, color: '#94A3B8' }}>{formatDate(inc.date)}</Typography>
+        </Box>
+      </Box>
+    );
+  }
+
   if (layout === 'list') {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5, borderBottom: '1px solid #E2E8F0' }}>
+      <Box onClick={onClick} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5, borderBottom: '1px solid #E2E8F0', cursor: onClick ? 'pointer' : 'default', '&:hover': onClick ? { bgcolor: '#F8FAFC' } : {} }}>
         <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: meta.bg, border: `1px solid ${meta.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.2rem' }}>
           {meta.emoji}
         </Box>
@@ -86,12 +124,14 @@ function IncidentCard({ inc, layout = 'grid' }) {
 
   return (
     <Box
+      onClick={onClick}
       sx={{
         p: 2,
         borderRadius: 2.5,
         border: `1.5px solid ${meta.border}`,
         bgcolor: meta.bg,
         transition: 'all 0.18s ease',
+        cursor: onClick ? 'pointer' : 'default',
         '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 6px 18px ${meta.border}88` },
       }}
     >
@@ -284,10 +324,10 @@ export default function HpsdmaFeed({ maxItems = 12, showSummary = true, hideHead
         <Typography variant="body2" color="text.secondary" textAlign="center" py={4}>
           No incidents reported so far this year.
         </Typography>
-      ) : layout === 'list' ? (
+      ) : layout === 'list' || layout === 'sidebar' ? (
         <Stack spacing={0}>
           {incidents.map((inc) => (
-            <IncidentCard inc={inc} key={inc.id} layout="list" />
+            <IncidentCard inc={inc} key={inc.id} layout={layout} />
           ))}
         </Stack>
       ) : (

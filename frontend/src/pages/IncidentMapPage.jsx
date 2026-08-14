@@ -4,8 +4,8 @@ import {
   CircularProgress, Stack, Divider, TextField, MenuItem,
   Select, FormControl, InputLabel, Button, Checkbox, FormControlLabel, FormGroup
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 
 import WarningAmberRoundedIcon  from '@mui/icons-material/WarningAmberRounded';
@@ -22,7 +22,18 @@ import LocalHospitalRoundedIcon from '@mui/icons-material/LocalHospitalRounded';
 import ReportProblemRoundedIcon from '@mui/icons-material/ReportProblemRounded';
 import ShieldRoundedIcon        from '@mui/icons-material/ShieldRounded';
 
-import HpsdmaFeed from '../components/HpsdmaFeed';
+import HpsdmaFeed, { IncidentCard } from '../components/HpsdmaFeed';
+import { fetchIncidents } from '../api/client';
+
+function MapController({ center, zoom = 12 }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.flyTo(center, zoom, { duration: 1.5 });
+    }
+  }, [center, map, zoom]);
+  return null;
+}
 
 const API_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002'}/hpsdma/incidents`;
 const HIMACHAL_CENTER = [31.5, 77.2];
@@ -102,6 +113,13 @@ export default function IncidentMapPage() {
   const [filterDistrict, setFilterDistrict] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterSource, setFilterSource] = useState('All');
+  
+  // Boundary
+  const [himachalGeoJSON, setHimachalGeoJSON] = useState(null);
+  const location = useLocation();
   
   // Layers
   const [layers, setLayers] = useState({
@@ -113,99 +131,95 @@ export default function IncidentMapPage() {
     road: false,
   });
 
+  const [selectedLocation, setSelectedLocation] = useState(null);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}?limit=500`);
-      if (res.ok) setRawData(await res.json());
+      const [hpsdmaRes, localRes] = await Promise.all([
+        fetch(`${API_URL}?limit=500`).catch(() => null),
+        fetchIncidents().catch(() => [])
+      ]);
+      
+      let combined = [];
+      if (hpsdmaRes && hpsdmaRes.ok) {
+        const hpsdmaData = await hpsdmaRes.json();
+        const formatted = (hpsdmaData.incidents || []).map(i => ({ ...i, source: 'hpsdma' }));
+        combined = [...combined, ...formatted];
+      }
+      
+      if (localRes && localRes.length > 0) {
+        const formatted = localRes.map(i => ({
+          ...i,
+          source: 'local',
+          district: i.district || 'Unknown',
+          type: i.disaster_type || 'Others',
+          lon: i.lng || i.lon,
+          date: i.created_at || i.timestamp
+        }));
+        combined = [...combined, ...formatted];
+      }
+
+      setRawData({ incidents: combined });
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { 
+    fetchData(); 
+    const intervalId = setInterval(fetchData, 2 * 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [fetchData]);
+
+  useEffect(() => {
+    // Parse URL params for lat/lng
+    const params = new URLSearchParams(location.search);
+    const latParam = params.get('lat');
+    const lngParam = params.get('lng');
+    const lat = parseFloat(latParam);
+    const lng = parseFloat(lngParam);
+    if (latParam && lngParam && latParam !== 'null' && lngParam !== 'null' && !isNaN(lat) && !isNaN(lng)) {
+      setSelectedLocation([lat, lng]);
+    }
+
+    // Fetch GeoJSON boundary
+    fetch('/himachal.geojson')
+      .then(res => res.json())
+      .then(data => setHimachalGeoJSON(data))
+      .catch(e => console.error("Could not load Himachal GeoJSON", e));
+  }, [location.search]);
 
   const allIncidents = rawData?.incidents || [];
   const summary = rawData?.summary || { total: 0, deaths: 0, injured: 0, missing: 0 };
   
-  const activeInc = summary.deaths + summary.injured + summary.missing;
-  const resolvedInc = Math.max(0, summary.total - activeInc);
+
 
   const distinctDistricts = [...new Set(allIncidents.map(i => i.district).filter(d => d && d !== '-'))].sort();
   const distinctTypes = [...new Set(allIncidents.map(i => i.type).filter(Boolean))].sort();
 
   const filteredIncidents = allIncidents.filter(inc => {
+    if (filterSource !== 'All' && inc.source !== filterSource) return false;
     if (filterDistrict && inc.district.toUpperCase() !== filterDistrict.toUpperCase()) return false;
     if (filterType && !inc.type.toLowerCase().includes(filterType.toLowerCase())) return false;
-    return inc.lat && inc.lon;
+    if (filterStatus) {
+      const isResolved = inc.status === 'resolved' || inc.status === 'Closed';
+      if (filterStatus === 'active' && isResolved) return false;
+      if (filterStatus === 'resolved' && !isResolved) return false;
+    }
+    if (filterDateFrom && new Date(inc.date || Date.now()) < new Date(filterDateFrom)) return false;
+    if (filterDateTo && new Date(inc.date || Date.now()) > new Date(filterDateTo)) return false;
+    return true; // Return all matching incidents, we'll conditionally render markers
   });
+
+  const totalInc = filteredIncidents.length;
+  const activeInc = filteredIncidents.filter(i => i.status !== 'resolved' && i.status !== 'Closed').length;
+  const resolvedInc = totalInc - activeInc;
 
   const toggleLayer = (l) => setLayers(prev => ({ ...prev, [l]: !prev[l] }));
 
   return (
     <Box sx={{ bgcolor: '#F8FAFC', minHeight: 'calc(100vh - 66px)', display: 'flex', flexDirection: 'column' }}>
       <style>{mapStyles}</style>
-
-      {/* ── TOP STATS BAR ── */}
-      <Box sx={{ bgcolor: '#FFF', borderBottom: '1px solid #E2E8F0', py: 2 }}>
-        <Container maxWidth="xl">
-          <Grid container alignItems="center" spacing={2} justifyContent="space-between">
-            {/* Title */}
-            <Grid item xs={12} md={3}>
-              <Typography sx={{ fontWeight: 900, color: NAVY, fontSize: '1.2rem', letterSpacing: '-0.02em', mb: 0.5 }}>
-                LIVE SITUATION MAP
-              </Typography>
-              <Typography sx={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>
-                Real-time overview of incidents and resources across Himachal Pradesh
-              </Typography>
-            </Grid>
-
-            {/* Stats */}
-            <Grid item xs={12} md={6}>
-              <Stack direction="row" spacing={2} justifyContent="center" divider={<Divider orientation="vertical" flexItem sx={{ my: 1 }} />}>
-                <Box sx={{ textAlign: 'center', minWidth: 80 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 0.5 }}>
-                    <WarningAmberRoundedIcon sx={{ color: BLUE, fontSize: 24 }} />
-                    <Typography sx={{ fontSize: '1.6rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{summary.total || 0}</Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Total Incidents</Typography>
-                </Box>
-                <Box sx={{ textAlign: 'center', minWidth: 80 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 0.5 }}>
-                    <LocalFireDepartmentRoundedIcon sx={{ color: RED, fontSize: 24 }} />
-                    <Typography sx={{ fontSize: '1.6rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{activeInc > 0 ? activeInc : 0}</Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Active Incidents</Typography>
-                </Box>
-                <Box sx={{ textAlign: 'center', minWidth: 80 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 0.5 }}>
-                    <CheckCircleOutlineRoundedIcon sx={{ color: '#10B981', fontSize: 24 }} />
-                    <Typography sx={{ fontSize: '1.6rem', fontWeight: 900, color: NAVY, lineHeight: 1 }}>{resolvedInc > 0 ? resolvedInc : 0}</Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Resolved Incidents</Typography>
-                </Box>
-              </Stack>
-            </Grid>
-
-            {/* SOS Button */}
-            <Grid item xs={12} md={3} sx={{ textAlign: 'right' }}>
-              <Button
-                component={RouterLink} to="/emergency"
-                variant="contained"
-                style={{ backgroundColor: RED, color: '#FFF' }}
-                sx={{ borderRadius: 3, p: 2, px: 4, width: '100%', maxWidth: 220, boxShadow: '0 10px 15px -3px rgba(220, 38, 38, 0.3)', '&:hover': { backgroundColor: '#B91C1C' } }}
-              >
-                <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 0.5 }}>
-                    <PhoneInTalkRoundedIcon />
-                    <Typography sx={{ fontSize: '1.4rem', fontWeight: 900, lineHeight: 1 }}>SOS</Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'none' }}>Need Immediate Help?</Typography>
-                </Box>
-              </Button>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
 
       {/* ── MAIN LAYOUT ── */}
       <Container maxWidth="xl" sx={{ flexGrow: 1, py: 3, display: 'flex', flexDirection: 'column' }}>
@@ -217,9 +231,18 @@ export default function IncidentMapPage() {
             <Box sx={{ bgcolor: '#FFF', borderRadius: 3, border: '1px solid #E2E8F0', overflow: 'hidden', mb: 3 }}>
               <Box sx={{ bgcolor: BLUE, color: '#FFF', px: 2, py: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography sx={{ fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.05em' }}>FILTERS</Typography>
-                <Typography sx={{ fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer', opacity: 0.9 }} onClick={() => { setFilterDistrict(''); setFilterType(''); setFilterStatus(''); }}>Reset</Typography>
+                <Typography sx={{ fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer', opacity: 0.9 }} onClick={() => { setFilterDistrict(''); setFilterType(''); setFilterStatus(''); setFilterDateFrom(''); setFilterDateTo(''); setFilterSource('All'); }}>Reset</Typography>
               </Box>
               <Box sx={{ p: 2 }}>
+                <FormControl size="small" fullWidth sx={{ mb: 2 }}>
+                  <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: NAVY, mb: 0.5 }}>SOURCE</Typography>
+                  <Select value={filterSource} displayEmpty onChange={e => setFilterSource(e.target.value)} sx={{ fontSize: '0.8rem', fontWeight: 600, bgcolor: '#F8FAFC' }}>
+                    <MenuItem value="All" sx={{ fontWeight: 600 }}>All Sources</MenuItem>
+                    <MenuItem value="local" sx={{ fontWeight: 600 }}>Local Incidents</MenuItem>
+                    <MenuItem value="hpsdma" sx={{ fontWeight: 600 }}>HPSDMA Extracted</MenuItem>
+                  </Select>
+                </FormControl>
+
                 <FormControl size="small" fullWidth sx={{ mb: 2 }}>
                   <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: NAVY, mb: 0.5 }}>DISTRICT</Typography>
                   <Select value={filterDistrict} displayEmpty onChange={e => setFilterDistrict(e.target.value)} sx={{ fontSize: '0.8rem', fontWeight: 600, bgcolor: '#F8FAFC' }}>
@@ -248,17 +271,13 @@ export default function IncidentMapPage() {
                 <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                   <FormControl size="small" fullWidth>
                     <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: NAVY, mb: 0.5 }}>DATE RANGE</Typography>
-                    <TextField type="date" size="small" sx={{ '& .MuiInputBase-root': { fontSize: '0.75rem', fontWeight: 600, bgcolor: '#F8FAFC' } }} />
+                    <TextField value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} type="date" size="small" sx={{ '& .MuiInputBase-root': { fontSize: '0.75rem', fontWeight: 600, bgcolor: '#F8FAFC' } }} />
                   </FormControl>
                   <FormControl size="small" fullWidth>
                     <Typography sx={{ fontSize: '0.7rem', fontWeight: 800, color: 'transparent', mb: 0.5 }}>TO</Typography>
-                    <TextField type="date" size="small" sx={{ '& .MuiInputBase-root': { fontSize: '0.75rem', fontWeight: 600, bgcolor: '#F8FAFC' } }} />
+                    <TextField value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} type="date" size="small" sx={{ '& .MuiInputBase-root': { fontSize: '0.75rem', fontWeight: 600, bgcolor: '#F8FAFC' } }} />
                   </FormControl>
                 </Box>
-
-                <Button fullWidth variant="contained" style={{ backgroundColor: BLUE, color: '#FFF' }} sx={{ fontWeight: 800, py: 1, borderRadius: 2 }}>
-                  Apply Filters
-                </Button>
               </Box>
             </Box>
 
@@ -290,9 +309,21 @@ export default function IncidentMapPage() {
             <Box sx={{ flexGrow: 1, bgcolor: '#FFF', borderRadius: 3, border: '1px solid #E2E8F0', overflow: 'hidden', position: 'relative', minHeight: 500 }}>
               
               <MapContainer center={HIMACHAL_CENTER} zoom={8} scrollWheelZoom={true} style={{ height: '100%', width: '100%', zIndex: 1 }} preferCanvas>
+                <MapController center={selectedLocation} />
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap" maxZoom={19} />
                 
+                {himachalGeoJSON && (
+                  <GeoJSON data={himachalGeoJSON} style={{ color: BLUE, weight: 2, opacity: 0.8, fillOpacity: 0.05 }} />
+                )}
+                
+                {selectedLocation && (
+                  <Marker position={selectedLocation} icon={makeIcon(RED, '📍')}>
+                    <Popup><Typography fontWeight={700}>Reported Location</Typography></Popup>
+                  </Marker>
+                )}
+
                 {layers.incidents && filteredIncidents.map(inc => {
+                  if (!inc.lat || !inc.lon) return null;
                   const m = getTypeMeta(inc.type);
                   return (
                     <Marker key={inc.id} position={[inc.lat, inc.lon]} icon={makeIcon(m.hex, m.emoji)}>
@@ -346,8 +377,24 @@ export default function IncidentMapPage() {
             
             <Box sx={{ bgcolor: '#FFF', borderRadius: 3, border: '1px solid #E2E8F0', overflow: 'hidden', flexGrow: 1, mb: 3 }}>
               <Box sx={{ height: '400px', overflowY: 'auto' }}>
-                {/* Reusing HpsdmaFeed with list layout to match blueprint */}
-                <HpsdmaFeed maxItems={10} hideHeader={true} showSummary={false} layout="list" />
+                {filteredIncidents.length > 0 ? (
+                  <Stack spacing={0}>
+                    {filteredIncidents.slice(0, 50).map(inc => (
+                      <IncidentCard 
+                        key={inc.id} 
+                        inc={inc} 
+                        layout="list" 
+                        onClick={() => {
+                          if (inc.lat && inc.lon) setSelectedLocation([inc.lat, inc.lon]);
+                        }} 
+                      />
+                    ))}
+                  </Stack>
+                ) : (
+                  <Box sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography sx={{ color: '#94A3B8', fontSize: '0.8rem', fontWeight: 600 }}>No incidents match the selected filters.</Typography>
+                  </Box>
+                )}
               </Box>
             </Box>
 

@@ -18,7 +18,6 @@ const PageWrapper = ({ children }) => (
 
 // Lazy load pages for fast rendering on weak networks
 const Homepage = lazy(() => import('./pages/SimpleHomepage'));
-const EmergencyPageOld = lazy(() => import('./pages/Homepage'));
 const EmergencyPage = lazy(() => import('./pages/EmergencyPage'));
 const VolunteerPage = lazy(() => import('./pages/VolunteerPage'));
 const IncidentMapPage = lazy(() => import('./pages/IncidentMapPage'));
@@ -32,15 +31,16 @@ const VolunteerRegistrationPage = lazy(() => import('./pages/VolunteerRegistrati
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const DisasterGuidesPage = lazy(() => import('./pages/DisasterGuidesPage'));
 const EmergencyContactsPage = lazy(() => import('./pages/EmergencyContactsPage'));
-const HpsdmaIncidentsPage = lazy(() => import('./pages/HpsdmaIncidentsPage'));
+const MediaPage = lazy(() => import('./pages/MediaPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 import OfflineIndicator from './components/OfflineIndicator';
 import { useAuth, AuthProvider } from './context/AuthContext';
 
-// Import newly extracted components and theme
 import theme from './theme';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import { syncOfflineIncidents } from './utils/offlineSync';
 
 // Protects the responder dashboard
 function ProtectedRoute({ children, allowedRoles }) {
@@ -56,6 +56,21 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 export default function App() {
   const location = useLocation();
+
+  // Setup background sync for offline incidents
+  React.useEffect(() => {
+    const handleOnline = () => {
+      console.log('Network restored. Attempting to sync offline incidents...');
+      syncOfflineIncidents();
+    };
+    
+    window.addEventListener('online', handleOnline);
+    // Also try syncing on app load just in case we started online with pending items
+    syncOfflineIncidents();
+    
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -75,11 +90,30 @@ export default function App() {
                   {/* Public Routes */}
                   <Route path="/" element={<PageWrapper><Homepage /></PageWrapper>} />
                   <Route path="/home" element={<PageWrapper><Homepage /></PageWrapper>} />
-                  <Route path="/emergency" element={<PageWrapper><EmergencyPage /></PageWrapper>} />
-                  <Route path="/map" element={<PageWrapper><IncidentMapPage /></PageWrapper>} />
-                  <Route path="/guides" element={<PageWrapper><DisasterGuidesPage /></PageWrapper>} />
-                  <Route path="/contacts" element={<PageWrapper><EmergencyContactsPage /></PageWrapper>} />
-                  <Route path="/incidents" element={<PageWrapper><HpsdmaIncidentsPage /></PageWrapper>} />
+                  <Route path="/login" element={<PageWrapper><LoginPage /></PageWrapper>} />
+                  <Route path="/signup" element={<PageWrapper><SignupPage /></PageWrapper>} />
+                  
+                  {/* Citizen & Above Routes */}
+                  <Route path="/emergency" element={
+                    <ProtectedRoute>
+                      <PageWrapper><EmergencyPage /></PageWrapper>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/map" element={
+                    <ProtectedRoute>
+                      <PageWrapper><IncidentMapPage /></PageWrapper>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/guides" element={
+                    <ProtectedRoute>
+                      <PageWrapper><DisasterGuidesPage /></PageWrapper>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/contacts" element={
+                    <ProtectedRoute>
+                      <PageWrapper><EmergencyContactsPage /></PageWrapper>
+                    </ProtectedRoute>
+                  } />
                   <Route path="/updates" element={
                     <ProtectedRoute>
                       <PageWrapper><UpdatesPage /></PageWrapper>
@@ -90,30 +124,40 @@ export default function App() {
                       <PageWrapper><AboutPage /></PageWrapper>
                     </ProtectedRoute>
                   } />
+                  <Route path="/media" element={
+                    <ProtectedRoute>
+                      <PageWrapper><MediaPage /></PageWrapper>
+                    </ProtectedRoute>
+                  } />
                   <Route path="/volunteer" element={
                     <ProtectedRoute>
                       <PageWrapper><VolunteerPage /></PageWrapper>
                     </ProtectedRoute>
                   } />
-                  <Route path="/login" element={<PageWrapper><LoginPage /></PageWrapper>} />
-                  <Route path="/signup" element={<PageWrapper><SignupPage /></PageWrapper>} />
                   <Route path="/join-volunteer" element={
                     <ProtectedRoute>
                       <PageWrapper><VolunteerRegistrationPage /></PageWrapper>
                     </ProtectedRoute>
                   } />
-                  <Route path="/dashboard" element={
+                  <Route path="/profile" element={
                     <ProtectedRoute>
+                      <PageWrapper><ProfilePage /></PageWrapper>
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Official/Elevated Routes */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute allowedRoles={['admin', 'agency_head', 'officer', 'sdrf_team']}>
                       <PageWrapper><DashboardPage /></PageWrapper>
                     </ProtectedRoute>
                   } />
                   <Route path="/equipment" element={
-                    <ProtectedRoute allowedRoles={['admin', 'agency_head']}>
+                    <ProtectedRoute allowedRoles={['admin', 'agency_head', 'officer', 'sdrf_team']}>
                       <PageWrapper><EquipmentPage /></PageWrapper>
                     </ProtectedRoute>
                   } />
                   <Route path="/security-logs" element={
-                    <ProtectedRoute allowedRoles={['admin', 'agency_head']}>
+                    <ProtectedRoute allowedRoles={['admin', 'agency_head', 'officer', 'sdrf_team']}>
                       <PageWrapper><SecurityLogsPage /></PageWrapper>
                     </ProtectedRoute>
                   } />

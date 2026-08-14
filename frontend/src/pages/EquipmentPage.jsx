@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Container, Grid, Typography, Button, TextField,
   InputAdornment, Stack, Divider, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, IconButton, Pagination, MenuItem, Select
+  TableContainer, TableHead, TableRow, IconButton, Pagination, MenuItem, Select,
+  Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 
@@ -28,7 +29,7 @@ import SearchOffRoundedIcon     from '@mui/icons-material/SearchOffRounded';
 import ConstructionRoundedIcon  from '@mui/icons-material/ConstructionRounded';
 import PhishingRoundedIcon      from '@mui/icons-material/PhishingRounded';
 
-import { fetchResources } from '../api/client';
+import { fetchResources, createResource } from '../api/client';
 
 const NAVY = '#0F172A';
 const BLUE = '#1D4ED8';
@@ -64,17 +65,27 @@ export default function EquipmentPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
+  // Modal States
+  const [openModal, setOpenModal] = useState(false);
+  const [modalType, setModalType] = useState('');
+  
+  // Form States
+  const [formName, setFormName] = useState('');
+  const [formCategory, setFormCategory] = useState('Rescue & Search');
+  const [formHQ, setFormHQ] = useState('Shimla Headquarters');
+  const [formQuantity, setFormQuantity] = useState(1);
+  const [formIssue, setFormIssue] = useState('');
+
+  const loadData = () => {
     fetchResources()
       .then((d) => {
         if (d && d.length > 0) {
-          // Map real data to table format if it exists, otherwise keep mock data for perfect blueprint match
           const mapped = d.map((e, i) => ({
             id: `EQP-${(e.category || 'GEN').substring(0,3).toUpperCase()}-00${i+1}`,
             name: e.name,
             category: e.category || 'Rescue & Search',
             department: e.department || 'Shimla HQ',
-            status: e.status === 'deployed' ? 'In Use' : e.status === 'in_transit' ? 'Maintenance' : 'Available',
+            status: e.status === 'deployed' ? 'In Use' : e.status === 'in_transit' ? 'Maintenance' : e.status === 'damaged' ? 'Maintenance' : 'Available',
             quantity: e.quantity || 1,
             available: (e.status === 'available' || !e.status) ? (e.quantity || 1) : 0
           }));
@@ -83,7 +94,45 @@ export default function EquipmentPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
+
+  const handleActionClick = (type) => {
+    setModalType(type);
+    setOpenModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setFormName('');
+    setFormIssue('');
+    setFormQuantity(1);
+  };
+
+  const handleSubmit = async () => {
+    if (modalType === 'Add New Equipment') {
+      try {
+        await createResource({
+          name: formName || 'Unknown Equipment',
+          category: formCategory,
+          department: formHQ,
+          quantity: parseInt(formQuantity, 10),
+          status: 'available'
+        });
+        loadData();
+      } catch (e) {
+        console.error('Failed to add equipment', e);
+      }
+    } else {
+      // For demo purposes, we will just simulate success for other forms
+      alert(`${modalType} submitted successfully!`);
+    }
+    handleCloseModal();
+  };
+
 
   const filtered = equipment.filter(e => !search || e.name.toLowerCase().includes(search.toLowerCase()) || e.id.toLowerCase().includes(search.toLowerCase()));
 
@@ -151,7 +200,7 @@ export default function EquipmentPage() {
                 <Box key={hq.name} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, borderRadius: 2, cursor: 'pointer', '&:hover': { bgcolor: '#F1F5F9' } }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <BusinessRoundedIcon sx={{ fontSize: 16, color: '#64748B' }} />
-                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: NAVY }}>{hq.name.replace(' HQ', ' Headquarters')}</Typography>
+                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: NAVY }}>{hq.name.includes('HQ') ? hq.name.replace(' HQ', ' Headquarters') : hq.name}</Typography>
                   </Box>
                   <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748B' }}>{hq.total}</Typography>
                 </Box>
@@ -179,7 +228,7 @@ export default function EquipmentPage() {
               </Box>
               <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: NAVY, mb: 0.5 }}>Need New Equipment?</Typography>
               <Typography sx={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500, mb: 2 }}>Request new equipment or report damaged items.</Typography>
-              <Button variant="outlined" size="small" fullWidth sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, borderColor: '#E2E8F0', color: BLUE, '&:hover': { bgcolor: LIGHT_BLUE } }}>
+              <Button onClick={() => handleActionClick('Equipment Request')} variant="outlined" size="small" fullWidth sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, borderColor: '#E2E8F0', color: BLUE, '&:hover': { bgcolor: LIGHT_BLUE } }}>
                 <SyncRoundedIcon sx={{ fontSize: 16, mr: 0.5 }} /> Request Equipment
               </Button>
             </Box>
@@ -212,27 +261,30 @@ export default function EquipmentPage() {
 
             {/* HQ Summary Cards */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-              {[
-                { hq: 'Mandi Headquarters', icon: <BusinessRoundedIcon />, bg: '#ECFCCB', color: '#166534', num: 34, avail: 24 },
-                { hq: 'Kangra Headquarters', icon: <BusinessRoundedIcon />, bg: '#DBEAFE', color: '#1E40AF', num: 32, avail: 21 },
-                { hq: 'Shimla Headquarters', icon: <BusinessRoundedIcon />, bg: '#FEF3C7', color: '#92400E', num: 32, avail: 20 },
-              ].map((c, i) => (
+              {hqStats.map((hqStat, i) => {
+                const config = [
+                  { bg: '#ECFCCB', color: '#166534' },
+                  { bg: '#DBEAFE', color: '#1E40AF' },
+                  { bg: '#FEF3C7', color: '#92400E' },
+                ][i % 3];
+                return (
                 <Grid item xs={4} key={i}>
-                  <Box sx={{ bgcolor: '#FFF', borderRadius: 3, border: '1px solid #E2E8F0', p: 1.5, display: 'flex', gap: 1.5, alignItems: 'center', cursor: 'pointer', '&:hover': { borderColor: c.color } }}>
-                    <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: c.bg, color: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {c.icon}
+                  <Box sx={{ bgcolor: '#FFF', borderRadius: 3, border: '1px solid #E2E8F0', p: 1.5, display: 'flex', gap: 1.5, alignItems: 'center', cursor: 'pointer', '&:hover': { borderColor: config.color } }}>
+                    <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: config.bg, color: config.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <BusinessRoundedIcon />
                     </Box>
                     <Box sx={{ flexGrow: 1 }}>
-                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: NAVY }}>{c.hq}</Typography>
+                      <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: NAVY }}>{hqStat.name.replace(' HQ', ' Headquarters')}</Typography>
                       <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
-                        <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: NAVY }}>{c.num} Items</Typography>
-                        <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#10B981' }}>{c.avail} Available</Typography>
+                        <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, color: NAVY }}>{hqStat.total} Items</Typography>
+                        <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#10B981' }}>{hqStat.avail} Available</Typography>
                       </Box>
                     </Box>
                     <KeyboardArrowRightRoundedIcon sx={{ color: '#94A3B8', fontSize: 16 }} />
                   </Box>
                 </Grid>
-              ))}
+                );
+              })}
             </Grid>
 
             {/* Data Table */}
@@ -395,7 +447,7 @@ export default function EquipmentPage() {
                 { icon: <SyncRoundedIcon />, label: 'Equipment Request' },
                 { icon: <BuildRoundedIcon />, label: 'View Maintenance Log' },
               ].map((a, i) => (
-                <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: i < 3 ? '1px solid #E2E8F0' : 'none', cursor: 'pointer', '&:hover': { bgcolor: '#F8FAFC' } }}>
+                <Box onClick={() => handleActionClick(a.label)} key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: i < 3 ? '1px solid #E2E8F0' : 'none', cursor: 'pointer', '&:hover': { bgcolor: '#F8FAFC' } }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Box sx={{ color: '#64748B', display: 'flex' }}>{React.cloneElement(a.icon, { sx: { fontSize: 18 } })}</Box>
                     <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: NAVY }}>{a.label}</Typography>
@@ -407,6 +459,119 @@ export default function EquipmentPage() {
           </Grid>
         </Grid>
       </Container>
+
+      {/* Action Modals */}
+      <Dialog open={openModal} onClose={handleCloseModal} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 900, color: NAVY, pb: 1 }}>{modalType}</DialogTitle>
+        <DialogContent dividers>
+          
+          {modalType === 'Add New Equipment' && (
+            <Stack spacing={3} sx={{ mt: 1 }}>
+              <TextField 
+                label="Equipment Name" 
+                value={formName} 
+                onChange={e => setFormName(e.target.value)} 
+                fullWidth size="small" 
+              />
+              
+              <FormControl fullWidth size="small">
+                <InputLabel>Category</InputLabel>
+                <Select value={formCategory} label="Category" onChange={e => setFormCategory(e.target.value)}>
+                  {Object.keys(CAT_COLORS).map(cat => (
+                    <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small">
+                <InputLabel>Headquarters</InputLabel>
+                <Select value={formHQ} label="Headquarters" onChange={e => setFormHQ(e.target.value)}>
+                  <MenuItem value="Shimla Headquarters">Shimla Headquarters</MenuItem>
+                  <MenuItem value="Mandi Headquarters">Mandi Headquarters</MenuItem>
+                  <MenuItem value="Kangra Headquarters">Kangra Headquarters</MenuItem>
+                </Select>
+              </FormControl>
+
+              <TextField 
+                label="Quantity" 
+                type="number" 
+                value={formQuantity} 
+                onChange={e => setFormQuantity(e.target.value)} 
+                fullWidth size="small" 
+                InputProps={{ inputProps: { min: 1 } }}
+              />
+            </Stack>
+          )}
+
+          {modalType === 'Report Damaged Equipment' && (
+            <Stack spacing={3} sx={{ mt: 1 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Select Equipment</InputLabel>
+                <Select defaultValue="" label="Select Equipment">
+                  {equipment.map(e => <MenuItem key={e.id} value={e.id}>{e.name} ({e.id})</MenuItem>)}
+                </Select>
+              </FormControl>
+              <TextField 
+                label="Describe the Damage" 
+                value={formIssue} 
+                onChange={e => setFormIssue(e.target.value)} 
+                fullWidth size="small" 
+                multiline rows={4} 
+              />
+            </Stack>
+          )}
+
+          {modalType === 'Equipment Request' && (
+            <Stack spacing={3} sx={{ mt: 1 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Requesting Headquarters</InputLabel>
+                <Select value={formHQ} label="Requesting Headquarters" onChange={e => setFormHQ(e.target.value)}>
+                  <MenuItem value="Shimla Headquarters">Shimla Headquarters</MenuItem>
+                  <MenuItem value="Mandi Headquarters">Mandi Headquarters</MenuItem>
+                  <MenuItem value="Kangra Headquarters">Kangra Headquarters</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField 
+                label="Requested Equipment / Description" 
+                value={formIssue} 
+                onChange={e => setFormIssue(e.target.value)} 
+                fullWidth size="small" 
+                multiline rows={3} 
+              />
+            </Stack>
+          )}
+
+          {modalType === 'View Maintenance Log' && (
+            <Box>
+              <Typography sx={{ fontSize: '0.85rem', color: '#64748B', mb: 2 }}>Recent maintenance activities:</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {[
+                  { title: 'Oil Change - Rescue Boat HGD', date: '10 Aug 2026', by: 'Tech Team A' },
+                  { title: 'Radio Antenna Fix', date: '08 Aug 2026', by: 'Comm Unit' },
+                  { title: 'Tire Replacement - Truck 04', date: '05 Aug 2026', by: 'Transport Unit' }
+                ].map((log, i) => (
+                  <Box key={i} sx={{ p: 2, bgcolor: '#F8FAFC', borderRadius: 2, border: '1px solid #E2E8F0' }}>
+                    <Typography sx={{ fontWeight: 800, color: NAVY }}>{log.title}</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                      <Typography sx={{ fontSize: '0.75rem', color: '#64748B' }}>{log.date}</Typography>
+                      <Typography sx={{ fontSize: '0.75rem', color: '#64748B' }}>{log.by}</Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
+
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={handleCloseModal} sx={{ color: '#64748B', fontWeight: 700, textTransform: 'none' }}>Cancel</Button>
+          {modalType !== 'View Maintenance Log' && (
+            <Button onClick={handleSubmit} variant="contained" sx={{ bgcolor: BLUE, fontWeight: 700, textTransform: 'none', px: 3 }}>
+              {modalType === 'Add New Equipment' ? 'Save Equipment' : 'Submit'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
 
       {/* ── BOTTOM TRUST BADGES ── */}
       <Box sx={{ bgcolor: LIGHT_BLUE, py: 2, borderTop: '1px solid #BFDBFE', mt: 'auto' }}>

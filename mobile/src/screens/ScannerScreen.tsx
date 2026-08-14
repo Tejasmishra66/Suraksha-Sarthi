@@ -40,7 +40,7 @@ export default function ScannerScreen({ navigation }: any) {
   const updateStatus = async (newStatus: string) => {
     setLoading(true);
     try {
-      await api.patch(`/resources/${scannedEq.id}/status`, { status: newStatus });
+      await api.patch(`/equipment/${scannedEq.id}/status`, { status: newStatus });
       Alert.alert('Success', `Equipment marked as ${newStatus}`);
       setShowDialog(false);
       navigation.goBack();

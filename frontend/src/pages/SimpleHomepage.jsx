@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Typography, Grid, Button, Stack, Divider, IconButton } from '@mui/material';
+import { Box, Container, Typography, Grid, Button, Stack, Divider, IconButton, Modal, Fade, Backdrop } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 
 import MapRoundedIcon           from '@mui/icons-material/MapRounded';
@@ -7,6 +7,7 @@ import CampaignRoundedIcon      from '@mui/icons-material/CampaignRounded';
 import GroupsRoundedIcon        from '@mui/icons-material/GroupsRounded';
 import SecurityRoundedIcon      from '@mui/icons-material/SecurityRounded';
 import PhoneInTalkRoundedIcon   from '@mui/icons-material/PhoneInTalkRounded';
+import CloseRoundedIcon         from '@mui/icons-material/CloseRounded';
 import InventoryRoundedIcon     from '@mui/icons-material/InventoryRounded';
 import SensorsRoundedIcon       from '@mui/icons-material/SensorsRounded';
 import ShieldRoundedIcon        from '@mui/icons-material/ShieldRounded';
@@ -44,9 +45,9 @@ const QUICK_ACTIONS = [
   { icon: <AssignmentRoundedIcon fontSize="small" />, label: 'Report Incident', color: '#3B82F6', path: '/emergency' },
   { icon: <ContactPhoneRoundedIcon fontSize="small" />, label: 'Emergency Contacts', color: '#EF4444', path: '/contacts' },
   { icon: <HandshakeRoundedIcon fontSize="small" />, label: 'Volunteer Signup', color: '#F97316', path: '/join-volunteer' },
-  { icon: <AddHomeRoundedIcon fontSize="small" />, label: 'Shelter Locations', color: '#8B5CF6', path: '/map' },
   { icon: <LocalLibraryRoundedIcon fontSize="small" />, label: 'Disaster Guides', color: '#10B981', path: '/guides' },
-  { icon: <AssignmentRoundedIcon fontSize="small" />, label: 'Live Updates', color: '#0F172A', path: '/updates' },
+  { icon: <CampaignRoundedIcon fontSize="small" />, label: 'Alerts', color: '#0F172A', path: '/updates' },
+  { icon: <WarningAmberRoundedIcon fontSize="small" />, label: 'HPSDMA Feed', color: '#DC2626', action: 'OPEN_HPSDMA' },
 ];
 
 const TRUST_BADGES = [
@@ -58,6 +59,7 @@ const TRUST_BADGES = [
 
 export default function SimpleHomepage() {
   const [summary, setSummary] = useState({ active: 0, volunteers: 0, teamMembers: 0, hq: 0, equipments: 0 });
+  const [hpsdmaModalOpen, setHpsdmaModalOpen] = useState(false);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -238,11 +240,11 @@ export default function SimpleHomepage() {
           <Typography variant="overline" sx={{ fontWeight: 900, color: BLUE, display: 'block', mb: 3 }}>
             QUICK ACTIONS
           </Typography>
-          <Grid container spacing={3}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)', md: 'repeat(7, 1fr)' }, gap: 3 }}>
             {QUICK_ACTIONS.map((action, i) => (
-              <Grid item xs={6} sm={4} md={2} key={i}>
+              <Box key={i}>
                 <Button 
-                  component={RouterLink} to={action.path}
+                  {...(action.path ? { component: RouterLink, to: action.path } : { onClick: () => { if (action.action === 'OPEN_HPSDMA') setHpsdmaModalOpen(true); } })}
                   sx={{ 
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5, 
                     p: 2.5, height: '100%', width: '100%',
@@ -258,16 +260,19 @@ export default function SimpleHomepage() {
                     }
                   }}
                 >
-                  <Box sx={{ color: action.color, bgcolor: `${action.color}15`, width: 44, height: 44, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Box sx={{ 
+                    width: 48, height: 48, borderRadius: '50%', 
+                    bgcolor: `${action.color}15`, color: action.color, 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s ease'
+                  }}>
                     {action.icon}
                   </Box>
-                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, textAlign: 'center', lineHeight: 1.2 }}>
-                    {action.label.split(' ').map((w, j) => <React.Fragment key={j}>{w}<br/></React.Fragment>)}
-                  </Typography>
+                  <Typography sx={{ fontWeight: 800, fontSize: '0.8rem', textAlign: 'center', lineHeight: 1.2 }}>{action.label}</Typography>
                 </Button>
-              </Grid>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Container>
       </Box>
 
@@ -398,6 +403,41 @@ export default function SimpleHomepage() {
           </Stack>
         </Container>
       </Box>
+
+      {/* ─── HPSDMA MODAL ─── */}
+      <Modal
+        open={hpsdmaModalOpen}
+        onClose={() => setHpsdmaModalOpen(false)}
+        closeAfterTransition
+        slots={{ backdrop: Backdrop }}
+        slotProps={{ backdrop: { timeout: 300, sx: { backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)' } } }}
+        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}
+      >
+        <Fade in={hpsdmaModalOpen}>
+          <Box sx={{ 
+            bgcolor: '#F8FAFC', 
+            borderRadius: 4, 
+            boxShadow: 24, 
+            width: '100%', 
+            maxWidth: 700, 
+            maxHeight: '90vh',
+            display: 'flex', 
+            flexDirection: 'column',
+            overflow: 'hidden',
+            border: '1px solid #E2E8F0'
+          }}>
+            <Box sx={{ p: 2, bgcolor: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0' }}>
+              <Typography sx={{ fontWeight: 900, color: NAVY, fontSize: '1.2rem' }}>Live HPSDMA Feed</Typography>
+              <IconButton onClick={() => setHpsdmaModalOpen(false)} size="small">
+                <CloseRoundedIcon />
+              </IconButton>
+            </Box>
+            <Box sx={{ p: { xs: 2, md: 3 }, overflowY: 'auto', flexGrow: 1, bgcolor: '#FFF' }}>
+              <HpsdmaFeed layout="sidebar" maxItems={50} showSummary={true} />
+            </Box>
+          </Box>
+        </Fade>
+      </Modal>
 
     </Box>
   );

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Grid, Typography, TextField, Button, Avatar, Select, MenuItem, FormControl, InputLabel, Divider } from '@mui/material';
+import { Box, Container, Grid, Typography, TextField, Button, Avatar, Select, MenuItem, FormControl, InputLabel, Divider, Dialog, DialogTitle, DialogContent, IconButton } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 
 // Icons
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
@@ -18,6 +19,8 @@ import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedI
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 
 import { createIncident, fetchIncidents } from '../api/client';
+import { saveIncidentOffline } from '../utils/offlineSync';
+import { compressImage } from '../utils/imageCompressor';
 
 const NAVY = '#0B2545';
 const BLUE = '#1D4ED8';
@@ -36,6 +39,7 @@ const SEVERITY_LEVELS = [
 export default function EmergencyPage() {
   const navigate = useNavigate();
   const [incidents, setIncidents] = useState([]);
+  const [selectedIncident, setSelectedIncident] = useState(null);
   
   // Form State
   const [title, setTitle] = useState('');
@@ -43,6 +47,7 @@ export default function EmergencyPage() {
   const [severity, setSeverity] = useState('High');
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
+  const [photo, setPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -58,22 +63,45 @@ export default function EmergencyPage() {
     }
     setLoading(true);
     
-    // Simulate getting location
+    // Process image if exists
+    let compressedPhotoBase64 = null;
+    if (photo) {
+      try {
+        compressedPhotoBase64 = await compressImage(photo);
+      } catch (err) {
+        console.error("Image compression failed", err);
+      }
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        const payload = {
+          disaster_type: title,
+          description: description,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          severity: severity,
+          mobile: mobile,
+          photo: compressedPhotoBase64
+        };
+
+        if (!navigator.onLine) {
+          await saveIncidentOffline(payload);
+          alert("You are offline. Incident saved locally and will be synced when connection is restored.");
+          setLoading(false);
+          navigate('/');
+          return;
+        }
+
         try {
-          await createIncident({
-            disaster_type: title, // use title as type for now
-            description: description,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            severity: severity,
-          });
+          await createIncident(payload);
           alert("Incident Reported Successfully!");
           navigate('/map');
         } catch {
-          alert("Failed to report incident. Try again.");
+          await saveIncidentOffline(payload);
+          alert("Network issue. Incident saved locally and will be synced automatically.");
           setLoading(false);
+          navigate('/');
         }
       },
       () => {
@@ -202,6 +230,16 @@ export default function EmergencyPage() {
                 <Typography sx={{ fontSize: '0.7rem', color: '#94A3B8', textAlign: 'right', mt: 0.5, fontWeight: 600 }}>0/500</Typography>
               </Box>
 
+              <Box sx={{ mb: 4, p: 2, border: '1px dashed #CBD5E1', borderRadius: 2, bgcolor: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="body2" color="#64748B" fontWeight={600}>
+                  {photo ? photo.name : 'Upload Incident Photo (Optional - will be compressed)'}
+                </Typography>
+                <Button variant="outlined" component="label" size="small" sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, borderColor: '#CBD5E1', color: NAVY }}>
+                  Browse File
+                  <input type="file" hidden accept="image/*" onChange={(e) => setPhoto(e.target.files[0])} />
+                </Button>
+              </Box>
+
               <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid item xs={12} md={6}>
                   <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, mb: 1 }}>Number of People Affected</Typography>
@@ -328,43 +366,7 @@ export default function EmergencyPage() {
               </Button>
             </Box>
 
-            {/* Recent Incidents */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography sx={{ fontSize: '0.95rem', fontWeight: 900, color: NAVY }}>Recent Incidents</Typography>
-              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: BLUE, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}>View All</Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {/* Combine mock and live data for UI completeness */}
-              {[
-                ...incidents.slice(0, 3).map(inc => ({
-                  title: inc.disaster_type || 'Emergency reported', loc: 'Unknown District', time: 'Just now', severity: inc.severity || 'Medium'
-                })),
-                { title: 'Flood Warning in Mandi', loc: 'Mandi District', time: '10:30 AM', severity: 'High' },
-                { title: 'Landslide Alert in Kullu', loc: 'Kullu District', time: '09:45 AM', severity: 'Medium' },
-                { title: 'Road Block on NH-3', loc: 'Lahaul & Spiti', time: '09:10 AM', severity: 'Low' },
-                { title: 'SDRF Team Deployed', loc: 'Kangra District', time: '08:50 AM', severity: 'Info' }
-              ].slice(0, 4).map((inc, i) => {
-                const s = SEVERITY_LEVELS.find(lvl => lvl.id === inc.severity) || SEVERITY_LEVELS[2];
-                return (
-                  <Box key={i} sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-                    <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: s.bg, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {React.cloneElement(s.icon, { sx: { fontSize: 18 } })}
-                    </Box>
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 800, color: NAVY, lineHeight: 1.2, mb: 0.3 }}>{inc.title}</Typography>
-                      <Typography sx={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748B' }}>{inc.loc}</Typography>
-                    </Box>
-                    <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5 }}>
-                      <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: '#94A3B8' }}>{inc.time}</Typography>
-                      <Box sx={{ bgcolor: s.color, color: '#FFF', fontSize: '0.6rem', fontWeight: 800, px: 1, py: 0.2, borderRadius: 1 }}>
-                        {s.title}
-                      </Box>
-                    </Box>
-                  </Box>
-                )
-              })}
-            </Box>
+
           </Grid>
         </Grid>
       </Container>
