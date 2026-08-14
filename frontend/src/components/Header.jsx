@@ -68,18 +68,22 @@ export default function Header() {
   const isOfficial = user?.role === 'admin' || user?.role === 'agency_head' || user?.role === 'officer' || user?.role === 'sdrf_team';
   const displayRole = user?.name ? user.name.toUpperCase() : (isOfficial ? user.role.replace('_', ' ').toUpperCase() : 'CITIZEN');
 
-  const navItems = [
+  let navItems = [
     { path: '/',               label: 'Home',            icon: <HomeRoundedIcon sx={{ fontSize: 18 }} /> },
-    { path: '/map',            label: 'Live Map',        icon: <MapRoundedIcon sx={{ fontSize: 18 }} /> },
-    { path: '/emergency',      label: 'Report Incident', icon: <AssignmentRoundedIcon sx={{ fontSize: 18 }} /> },
-    { path: '/updates',        label: 'Alerts',          icon: <CampaignRoundedIcon sx={{ fontSize: 18 }} /> },
-    { path: '/volunteer',      label: 'Volunteers',      icon: <GroupsRoundedIcon sx={{ fontSize: 18 }} /> },
-    { path: '/media',          label: 'Media',           icon: <CameraAltRoundedIcon sx={{ fontSize: 18 }} /> },
   ];
+
+  if (user) {
+    navItems.push(
+      { path: '/map',            label: 'Live Map',        icon: <MapRoundedIcon sx={{ fontSize: 18 }} /> },
+      { path: '/emergency',      label: 'Report Incident', icon: <AssignmentRoundedIcon sx={{ fontSize: 18 }} /> },
+      { path: '/updates',        label: 'Alerts',          icon: <CampaignRoundedIcon sx={{ fontSize: 18 }} /> },
+      { path: '/volunteer',      label: 'Volunteers',      icon: <GroupsRoundedIcon sx={{ fontSize: 18 }} /> },
+      { path: '/media',          label: 'Media',           icon: <CameraAltRoundedIcon sx={{ fontSize: 18 }} /> }
+    );
+  }
 
   if (isOfficial) {
     navItems.push({ path: '/equipment',    label: 'Resources',       icon: <DirectionsCarRoundedIcon sx={{ fontSize: 18 }} />, dropdown: true });
-    navItems.push({ path: '/dashboard',    label: 'Dashboard',       icon: <DashboardRoundedIcon sx={{ fontSize: 18 }} /> });
   }
 
   const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
@@ -182,6 +186,23 @@ export default function Header() {
         <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5 }}>
           {user ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              {isOfficial && (
+                <Button
+                  component={RouterLink} to="/dashboard"
+                  startIcon={<DashboardRoundedIcon sx={{ fontSize: '1rem !important' }} />}
+                  sx={{
+                    color: '#fff',
+                    bgcolor: NAVY,
+                    fontFamily: '"Outfit", sans-serif', fontWeight: 700, fontSize: '0.87rem',
+                    borderRadius: '10px', px: 2, py: 0.8, textTransform: 'none',
+                    '&:hover': { bgcolor: '#1E293B', transform: 'translateY(-1px)' },
+                    transition: 'all 0.18s',
+                    mr: 0.5
+                  }}
+                >
+                  Dashboard
+                </Button>
+              )}
 
               <Avatar
                 component={RouterLink}
@@ -306,19 +327,36 @@ export default function Header() {
 
         <Divider sx={{ mb: 3 }} />
 
-        <Button
-          component={RouterLink} to="/emergency" fullWidth
-          onClick={() => setDrawerOpen(false)}
-          startIcon={<ErrorRoundedIcon />}
-          sx={{
-            mb: 2, py: 1.4, bgcolor: '#FEF2F2', color: RED,
-            border: `1.5px solid #FECACA`,
-            borderRadius: '10px', fontFamily: '"Outfit", sans-serif', fontWeight: 700, textTransform: 'none',
-            '&:hover': { bgcolor: '#FEE2E2', borderColor: RED },
-          }}
-        >
-          Report Emergency SOS
-        </Button>
+        {isOfficial && (
+          <Button
+            component={RouterLink} to="/dashboard" fullWidth
+            onClick={() => setDrawerOpen(false)}
+            startIcon={<DashboardRoundedIcon />}
+            sx={{
+              mb: 2, py: 1.4, bgcolor: NAVY, color: '#FFF',
+              borderRadius: '10px', fontFamily: '"Outfit", sans-serif', fontWeight: 700, textTransform: 'none',
+              '&:hover': { bgcolor: '#1E293B' },
+            }}
+          >
+            Official Dashboard
+          </Button>
+        )}
+
+        {user && (
+          <Button
+            component={RouterLink} to="/emergency" fullWidth
+            onClick={() => setDrawerOpen(false)}
+            startIcon={<ErrorRoundedIcon />}
+            sx={{
+              mb: 2, py: 1.4, bgcolor: '#FEF2F2', color: RED,
+              border: `1.5px solid #FECACA`,
+              borderRadius: '10px', fontFamily: '"Outfit", sans-serif', fontWeight: 700, textTransform: 'none',
+              '&:hover': { bgcolor: '#FEE2E2', borderColor: RED },
+            }}
+          >
+            Report Emergency SOS
+          </Button>
+        )}
 
         <Stack spacing={1.5}>
           {user ? (

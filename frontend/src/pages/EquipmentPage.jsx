@@ -92,7 +92,7 @@ export default function EquipmentPage() {
           setEquipment(mapped);
         }
       })
-      .catch(() => {})
+      .catch((err) => alert('Failed to load equipment catalog. Please try again later.'))
       .finally(() => setLoading(false));
   };
 

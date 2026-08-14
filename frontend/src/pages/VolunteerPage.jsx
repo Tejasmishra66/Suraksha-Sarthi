@@ -66,7 +66,7 @@ export default function VolunteerPage() {
   useEffect(() => {
     fetchVolunteers()
       .then((d) => setVolunteers(d || []))
-      .catch(() => {})
+      .catch((err) => alert('Failed to load volunteers network. Please check your connection.'))
       .finally(() => setLoading(false));
   }, []);
 

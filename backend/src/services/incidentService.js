@@ -16,6 +16,7 @@ function createIncident(payload) {
     disasterType,
     lat,
     lng,
+    lon,
     address,
     agencyAssigned,
     mediaContentBase64,
@@ -27,23 +28,25 @@ function createIncident(payload) {
     phone
   } = payload;
 
-  if (!title || !disasterType || (lat == null && lng == null && !address)) {
+  if (!title || !disasterType || (lat == null && lng == null && lon == null && !address)) {
     const error = new Error("title and disasterType are required, and either lat/lng or address must be provided");
     error.statusCode = 400;
     throw error;
   }
 
   const timestamp = mediaTimestamp || new Date().toISOString();
-  const gps = mediaGps || (lat != null && lng != null ? `${lat},${lng}` : (address || 'unknown'));
+  const gps = mediaGps || (lat != null && (lng != null || lon != null) ? `${lat},${lng || lon}` : (address || 'unknown'));
   const material = `${mediaContentBase64 || ""}|${timestamp}|${gps}`;
   const mediaHash = crypto.createHash("sha256").update(material).digest("hex");
+
+  const finalLng = lng != null ? Number(lng) : (lon != null ? Number(lon) : null);
 
   const result = incidentModel.createIncident({
     title,
     description,
     disasterType,
     lat: lat != null ? Number(lat) : null,
-    lng: lng != null ? Number(lng) : null,
+    lng: finalLng,
     address: address || null,
     agencyAssigned: agencyAssigned || null,
     mediaHash,

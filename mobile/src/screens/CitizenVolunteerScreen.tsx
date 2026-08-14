@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Platform, Alert, ActivityIndicator as RNActivityIndicator, Image,
+  StatusBar, Platform, Alert, ActivityIndicator as RNActivityIndicator, Image, KeyboardAvoidingView,
 } from 'react-native';
 import { Text, TextInput, ActivityIndicator, Surface, Portal, Dialog, Button } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -204,7 +204,7 @@ export default function CitizenVolunteerScreen() {
   }
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <StatusBar barStyle="light-content" backgroundColor={GOV_BLUE_DARK} />
 
       {/* ── Top Header ──────────────────────────────────────────── */}
@@ -490,7 +490,7 @@ export default function CitizenVolunteerScreen() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

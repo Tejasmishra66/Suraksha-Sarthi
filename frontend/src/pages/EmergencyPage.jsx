@@ -53,7 +53,7 @@ export default function EmergencyPage() {
   useEffect(() => {
     fetchIncidents()
       .then((d) => setIncidents(d || []))
-      .catch(() => {});
+      .catch((err) => alert('Failed to load recent incidents. Please check your connection.'));
   }, []);
 
   const handleSubmit = async () => {

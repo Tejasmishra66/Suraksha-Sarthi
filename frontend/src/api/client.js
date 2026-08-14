@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const api = axios.create({
   baseURL: apiBaseUrl,
@@ -218,11 +218,6 @@ export async function uploadIncidentMedia(incidentId, formData) {
 // Offline queue endpoints
 export async function postQueue(items) {
   const { data } = await api.post('/sync/queue', { items });
-  return data;
-}
-
-export async function flushQueue() {
-  const { data } = await api.post('/sync/flush');
   return data;
 }
 

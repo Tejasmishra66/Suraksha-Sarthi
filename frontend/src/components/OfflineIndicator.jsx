@@ -95,36 +95,6 @@ export default function OfflineIndicator() {
         </Alert>
       </Snackbar>
 
-      {/* ── 2G Low-Bandwidth Mode Banner ── */}
-      {isOnline && is2G && (
-        <Snackbar
-          open={true}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          sx={{ top: { xs: 60, sm: 80 } }}
-        >
-          <Alert
-            severity="info"
-            variant="filled"
-            icon={<SignalCellularAltIcon />}
-            sx={{ width: '100%', boxShadow: 4, bgcolor: '#D97706' }}
-            action={
-              queueCount > 0 ? (
-                <Button
-                  color="inherit"
-                  size="small"
-                  startIcon={<SyncIcon />}
-                  onClick={handleSyncNow}
-                  sx={{ fontWeight: 800, bgcolor: 'rgba(255,255,255,0.2)' }}
-                >
-                  SYNC NOW ({queueCount})
-                </Button>
-              ) : undefined
-            }
-          >
-            📶 <strong>2G Network Signal Detected</strong> — Low-bandwidth packet optimization active ({queueCount} queued).
-          </Alert>
-        </Snackbar>
-      )}
 
       {/* ── Sync Result Alert ── */}
       <Snackbar

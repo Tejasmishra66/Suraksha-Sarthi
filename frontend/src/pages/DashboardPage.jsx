@@ -11,7 +11,8 @@ import {
   fetchAgencies,
   fetchAuditLogs,
   exportIncidents,
-  fetchResources
+  fetchResources,
+  broadcastVolunteerMessage
 } from '../api/client';
 
 import HpsdmaFeed from '../components/HpsdmaFeed';
@@ -131,15 +132,19 @@ export default function DashboardPage() {
     }
   };
 
-  const handleBroadcast = (e) => {
+  const handleBroadcast = async (e) => {
     e.preventDefault();
     if (!broadcastMessage) return;
     setBroadcastStatus('Sending push notifications to all devices...');
-    setTimeout(() => {
+    try {
+      await broadcastVolunteerMessage({ message: broadcastMessage });
       setBroadcastStatus('Broadcast successfully delivered!');
       setBroadcastMessage('');
+    } catch (err) {
+      setBroadcastStatus('Failed to send broadcast.');
+    } finally {
       setTimeout(() => setBroadcastStatus(''), 3000);
-    }, 1500);
+    }
   };
 
   const filteredIncidents = incidents.filter(inc => {

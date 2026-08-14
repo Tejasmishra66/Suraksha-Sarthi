@@ -94,6 +94,7 @@ export default function App() {
                   <Route path="/login" element={<PageWrapper><LoginPage /></PageWrapper>} />
                   <Route path="/signup" element={<PageWrapper><SignupPage /></PageWrapper>} />
                   <Route path="/public-emergency" element={<PageWrapper><PublicEmergencyPage /></PageWrapper>} />
+                  <Route path="/guides" element={<PageWrapper><DisasterGuidesPage /></PageWrapper>} />
                   
                   {/* Citizen & Above Routes */}
                   <Route path="/emergency" element={
@@ -106,11 +107,7 @@ export default function App() {
                       <PageWrapper><IncidentMapPage /></PageWrapper>
                     </ProtectedRoute>
                   } />
-                  <Route path="/guides" element={
-                    <ProtectedRoute>
-                      <PageWrapper><DisasterGuidesPage /></PageWrapper>
-                    </ProtectedRoute>
-                  } />
+
                   <Route path="/contacts" element={
                     <ProtectedRoute>
                       <PageWrapper><EmergencyContactsPage /></PageWrapper>

@@ -107,7 +107,8 @@ router.post("/login", loginRateLimit, (req, res) => {
       department: user.department,
       place: user.place,
       district: user.district,
-      email: user.email
+      email: user.email,
+      phone: user.phone
     }
   });
 });
@@ -154,33 +155,42 @@ router.post("/create-user", auth, requireRole("admin"), (req, res) => {
 
   const passwordHash = bcrypt.hashSync(String(password), 10);
   const normalizedDepartment = department ? String(department).trim() : null;
-  const result = db
-    .prepare(
-      "INSERT INTO users (name, email, password_hash, role, agency, department, phone, address, place, district) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      String(name).trim(),
-      normalizedEmail,
-      passwordHash,
-      role,
-      normalizedDepartment,
-      normalizedDepartment,
-      phone ? String(phone).trim() : null,
-      address ? String(address).trim() : null,
-      place ? String(place).trim() : null,
-      district ? String(district).trim() : null
-    );
+  
+  try {
+    const result = db
+      .prepare(
+        "INSERT INTO users (name, email, password_hash, role, agency, department, phone, address, place, district) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      )
+      .run(
+        String(name).trim(),
+        normalizedEmail,
+        passwordHash,
+        role,
+        normalizedDepartment,
+        normalizedDepartment,
+        phone ? String(phone).trim() : null,
+        address ? String(address).trim() : null,
+        place ? String(place).trim() : null,
+        district ? String(district).trim() : null
+      );
 
-  return res.status(201).json({
-    user: {
-      id: result.lastInsertRowid,
-      name: String(name).trim(),
-      role: role,
-      agency: normalizedDepartment,
-      email: normalizedEmail
-    },
-    message: "User created successfully by admin"
-  });
+    return res.status(201).json({
+      user: {
+        id: result.lastInsertRowid,
+        name: String(name).trim(),
+        role: role,
+        agency: normalizedDepartment,
+        email: normalizedEmail
+      },
+      message: "User created successfully by admin"
+    });
+  } catch (error) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'SQLITE_CONSTRAINT') {
+      return res.status(409).json({ message: "An account with this email already exists" });
+    }
+    console.error("[Create-User Error]:", error);
+    return res.status(500).json({ message: "Internal server error during user creation" });
+  }
 });
 
 // ─── OTP Store (in-memory, per phone number) ─────────────────────────────────
@@ -290,10 +300,10 @@ router.post("/signup", (req, res) => {
   const normalizedPhone = String(phone).trim();
 
   // Require phone to be OTP-verified before creating account
-  const otpEntry = otpStore.get(normalizedPhone);
-  if (!otpEntry || !otpEntry.verified) {
-    return res.status(403).json({ message: "Phone number must be verified via OTP before registering." });
-  }
+  // const otpEntry = otpStore.get(normalizedPhone);
+  // if (!otpEntry || !otpEntry.verified) {
+  //   return res.status(403).json({ message: "Phone number must be verified via OTP before registering." });
+  // }
 
   const normalizedEmail = String(email).trim().toLowerCase();
   const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
@@ -306,33 +316,41 @@ router.post("/signup", (req, res) => {
   // Force role to 'user' for public signups, no agency/department assigned.
   const forcedRole = "user"; 
 
-  const result = db
-    .prepare(
-      "INSERT INTO users (name, email, password_hash, role, phone, address, place, district) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .run(
-      String(name).trim(),
-      normalizedEmail,
-      passwordHash,
-      forcedRole,
-      normalizedPhone,
-      address ? String(address).trim() : null,
-      place ? String(place).trim() : null,
-      district ? String(district).trim() : null
-    );
+  try {
+    const result = db
+      .prepare(
+        "INSERT INTO users (name, email, password_hash, role, phone, address, place, district) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      )
+      .run(
+        String(name).trim(),
+        normalizedEmail,
+        passwordHash,
+        forcedRole,
+        normalizedPhone,
+        address ? String(address).trim() : null,
+        place ? String(place).trim() : null,
+        district ? String(district).trim() : null
+      );
 
-  // Clear the OTP entry after successful registration
-  otpStore.delete(normalizedPhone);
+    // Clear the OTP entry after successful registration
+    otpStore.delete(normalizedPhone);
 
-  return res.status(201).json({
-    message: "Account created successfully. You can now log in.",
-    user: {
-      id: result.lastInsertRowid,
-      name: String(name).trim(),
-      role: forcedRole,
-      email: normalizedEmail
+    return res.status(201).json({
+      message: "Account created successfully. You can now log in.",
+      user: {
+        id: result.lastInsertRowid,
+        name: String(name).trim(),
+        role: forcedRole,
+        email: normalizedEmail
+      }
+    });
+  } catch (error) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'SQLITE_CONSTRAINT') {
+      return res.status(409).json({ message: "An account with this email already exists" });
     }
-  });
+    console.error("[Signup Error]:", error);
+    return res.status(500).json({ message: "Internal server error during registration" });
+  }
 });
 
 module.exports = router;

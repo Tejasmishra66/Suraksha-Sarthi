@@ -58,20 +58,22 @@ router.post("/dispatch", (req, res) => {
     const toHq = receiver_hq;
     const transitPlace = `In Transit (${fromHq} ➔ ${toHq})`;
 
-    // Update equipment
-    const update = db.prepare(`
-      UPDATE equipment
-      SET status = 'in_transit', place = ?, last_scanned_at = CURRENT_TIMESTAMP
-      WHERE id = ? OR qr_code = ?
-    `);
-    update.run(transitPlace, equipment_id, equipment_id);
+    db.transaction(() => {
+      // Update equipment
+      const update = db.prepare(`
+        UPDATE equipment
+        SET status = 'in_transit', place = ?, last_scanned_at = CURRENT_TIMESTAMP
+        WHERE id = ? OR qr_code = ?
+      `);
+      update.run(transitPlace, equipment_id, equipment_id);
 
-    // Insert transfer log
-    const logInsert = db.prepare(`
-      INSERT INTO equipment_transfers (equipment_id, sender_hq, receiver_hq, status)
-      VALUES (?, ?, ?, 'in_transit')
-    `);
-    logInsert.run(equipment_id, fromHq, toHq);
+      // Insert transfer log
+      const logInsert = db.prepare(`
+        INSERT INTO equipment_transfers (equipment_id, sender_hq, receiver_hq, status)
+        VALUES (?, ?, ?, 'in_transit')
+      `);
+      logInsert.run(equipment_id, fromHq, toHq);
+    })();
 
     const updatedEq = db.prepare("SELECT * FROM equipment WHERE id = ? OR qr_code = ?").get(equipment_id, equipment_id);
     res.json({ success: true, message: `Dispatched from ${fromHq} to ${toHq}`, equipment: updatedEq });
@@ -90,21 +92,23 @@ router.post("/receive", (req, res) => {
   try {
     const targetHq = receiver_hq || 'Mandi HQ';
 
-    // Update equipment status to available at new HQ
-    const update = db.prepare(`
-      UPDATE equipment
-      SET status = 'available', place = ?, department = ?, last_scanned_at = CURRENT_TIMESTAMP
-      WHERE id = ? OR qr_code = ?
-    `);
-    update.run(targetHq, `SDRF ${targetHq}`, equipment_id, equipment_id);
+    db.transaction(() => {
+      // Update equipment status to available at new HQ
+      const update = db.prepare(`
+        UPDATE equipment
+        SET status = 'available', place = ?, department = ?, last_scanned_at = CURRENT_TIMESTAMP
+        WHERE id = ? OR qr_code = ?
+      `);
+      update.run(targetHq, `SDRF ${targetHq}`, equipment_id, equipment_id);
 
-    // Update latest transfer log
-    const logUpdate = db.prepare(`
-      UPDATE equipment_transfers
-      SET status = 'confirmed'
-      WHERE equipment_id = ? AND status = 'in_transit'
-    `);
-    logUpdate.run(equipment_id);
+      // Update latest transfer log
+      const logUpdate = db.prepare(`
+        UPDATE equipment_transfers
+        SET status = 'confirmed'
+        WHERE equipment_id = ? AND status = 'in_transit'
+      `);
+      logUpdate.run(equipment_id);
+    })();
 
     const updatedEq = db.prepare("SELECT * FROM equipment WHERE id = ? OR qr_code = ?").get(equipment_id, equipment_id);
     res.json({ success: true, message: `Equipment received at ${targetHq}`, equipment: updatedEq });
@@ -176,41 +180,26 @@ router.post("/:id/scan", (req, res) => {
   const { action, lat, lng, receiver_id, sender_id } = req.body;
   
   try {
-    const insertTransfer = db.prepare(`
-      INSERT INTO equipment_transfers (equipment_id, sender_id, receiver_id, status)
-      VALUES (?, ?, ?, ?)
-    `);
-    insertTransfer.run(id, sender_id || null, receiver_id || null, action);
+    db.transaction(() => {
+      const insertTransfer = db.prepare(`
+        INSERT INTO equipment_transfers (equipment_id, sender_id, receiver_id, status)
+        VALUES (?, ?, ?, ?)
+      `);
+      insertTransfer.run(id, sender_id || null, receiver_id || null, action);
 
-    const newStatus = action === 'confirm' ? 'available' : action;
-    const updateEquipment = db.prepare(`
-      UPDATE equipment
-      SET status = ?, lat = ?, lng = ?, last_scanned_at = CURRENT_TIMESTAMP
-      WHERE id = ? OR qr_code = ?
-    `);
-    updateEquipment.run(newStatus, lat || null, lng || null, id, id);
+      const newStatus = action === 'confirm' ? 'available' : action;
+      const updateEquipment = db.prepare(`
+        UPDATE equipment
+        SET status = ?, lat = ?, lng = ?, last_scanned_at = CURRENT_TIMESTAMP
+        WHERE id = ? OR qr_code = ?
+      `);
+      updateEquipment.run(newStatus, lat || null, lng || null, id, id);
+    })();
 
     res.json({ success: true, message: "Equipment scan logged successfully" });
   } catch (error) {
     console.error("Failed to process scan:", error);
     res.status(500).json({ error: "Failed to process scan" });
-  }
-});
-
-// PATCH /equipment/:id/status - Update status for mobile QR scanner
-router.patch("/:id/status", (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  try {
-    const updateStatus = db.prepare(`
-      UPDATE equipment
-      SET status = ?
-      WHERE id = ? OR qr_code = ?
-    `);
-    updateStatus.run(status, id, id);
-    res.json({ success: true, message: "Equipment status updated" });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to update status" });
   }
 });
 
