@@ -6,6 +6,8 @@ import {
 import { Text, TextInput } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
+import { useTranslation } from 'react-i18next';
+import i18n, { changeAppLanguage } from '../i18n';
 import { api } from '../api';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -15,6 +17,7 @@ const GOV_ORANGE = '#FF6600';
 const GOV_LIGHT  = '#F0F4FF';
 
 export default function LoginScreen({ navigation }: any) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,14 +31,18 @@ export default function LoginScreen({ navigation }: any) {
     setLoading(true);
     try {
       const response = await api.post('/auth/login', { email, password });
-      if (response.data?.token) {
+      const role = response.data.user?.role || 'user';
         await SecureStore.setItemAsync('jwt', response.data.token);
-        await SecureStore.setItemAsync('userRole', response.data.user?.role || 'user');
+        await SecureStore.setItemAsync('userRole', role);
         await SecureStore.setItemAsync('userName', response.data.user?.name || 'User');
-        navigation.replace('MainTabs');
-      } else {
-        Alert.alert('Login Failed', 'Invalid credentials');
-      }
+        await SecureStore.setItemAsync('userPhone', response.data.user?.phone || '');
+        // Route based on role
+        if (role === 'user') {
+          navigation.replace('CitizenTabs');
+        } else {
+          navigation.replace('MainTabs');
+        }
+
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to connect to server');
     } finally {
@@ -50,13 +57,21 @@ export default function LoginScreen({ navigation }: any) {
       {/* Official Header Banner */}
       <LinearGradient colors={[GOV_BLUE, '#004DB3']} style={styles.govBanner}>
         <View style={styles.ashokaRow}>
-          {/* Ashoka Chakra placeholder */}
-          <MaterialCommunityIcons name="star-circle" size={32} color="#FF6600" />
+          <MaterialCommunityIcons name="star-circle" size={28} color="#FF6600" />
           <View style={styles.ashokaText}>
             <Text style={styles.govTitle}>Government of Himachal Pradesh</Text>
             <Text style={styles.govSubtitle}>State Disaster Response Force</Text>
           </View>
-          <MaterialCommunityIcons name="star-circle" size={32} color="#FF6600" />
+          <TouchableOpacity
+            style={styles.langToggleHeaderBtn}
+            onPress={() => changeAppLanguage(i18n.language === 'en' ? 'hi' : 'en')}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="translate" size={16} color="white" />
+            <Text style={styles.langToggleHeaderText}>
+              {i18n.language === 'en' ? 'हिन्दी' : 'English'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
 
@@ -235,6 +250,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 16,
   },
+  langToggleHeaderBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+  },
+  langToggleHeaderText: { color: 'white', fontSize: 11, fontWeight: '800' },
   fieldGroup: {
     marginBottom: 16,
   },

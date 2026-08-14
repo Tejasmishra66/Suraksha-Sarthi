@@ -1,11 +1,8 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import Constants from 'expo-constants';
 
-// Use expo-constants to pull the API URL from app.json extra config,
-// with fallback to Android emulator host alias.
-const API_BASE_URL =
-  Constants.expoConfig?.extra?.apiBaseUrl || 'http://10.0.2.2:4002';
+// Machine's local network IP address - update this with your machine's IP if different
+const API_BASE_URL = 'http://10.137.94.239:4001';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
