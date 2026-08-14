@@ -220,7 +220,7 @@ export default function LoginPage() {
           </Divider>
 
           <Button
-            fullWidth component={RouterLink} to="/emergency" variant="outlined" color="error" size="large"
+            fullWidth component={RouterLink} to="/public-emergency" variant="outlined" color="error" size="large"
             startIcon={<WarningAmberRoundedIcon />}
             sx={{ py: 1.5, fontWeight: 800, borderRadius: 2, borderWidth: 2, '&:hover': { borderWidth: 2 } }}
           >

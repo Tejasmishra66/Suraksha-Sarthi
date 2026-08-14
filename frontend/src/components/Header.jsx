@@ -82,8 +82,6 @@ export default function Header() {
     navItems.push({ path: '/dashboard',    label: 'Dashboard',       icon: <DashboardRoundedIcon sx={{ fontSize: 18 }} /> });
   }
 
-  navItems.push({ path: '/about',          label: 'About Us',        icon: <InfoRoundedIcon sx={{ fontSize: 18 }} /> });
-
   const isActive = (path) => path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
   const handleLogout = () => {

@@ -390,6 +390,45 @@ export default function SimpleHomepage() {
         </Container>
       </Box>
 
+      {/* ─── 6. ABOUT SURAKSHA SARTHI ─── */}
+      <Box sx={{ bgcolor: '#FFFFFF', py: { xs: 6, md: 8 }, borderTop: '1px solid #E2E8F0' }}>
+        <Container maxWidth="md">
+          <Box sx={{ textAlign: 'center', mb: 5 }}>
+            <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 900, color: NAVY, fontSize: { xs: '1.8rem', md: '2.2rem' }, mb: 1.5, letterSpacing: '-0.02em' }}>
+              About Suraksha Sarthi
+            </Typography>
+            <Typography sx={{ fontSize: '1rem', color: '#64748B', fontWeight: 500, maxWidth: 600, mx: 'auto', lineHeight: 1.7 }}>
+              Dedicated to protecting Himachal Pradesh through faster response, better coordination, and safer communities.
+            </Typography>
+          </Box>
+
+          <Box sx={{ bgcolor: '#F8FAFC', borderRadius: 4, p: { xs: 3, md: 4 }, border: '1px solid #E2E8F0', mb: 4 }}>
+            <Typography sx={{ fontFamily: '"Outfit", sans-serif', fontWeight: 800, color: NAVY, fontSize: '1.3rem', mb: 1.5 }}>
+              Our Mission
+            </Typography>
+            <Typography sx={{ color: '#475569', lineHeight: 1.8, fontSize: '0.95rem' }}>
+              Suraksha Sarthi is a unified emergency response platform designed specifically for the State Disaster Response Force (SDRF) of Himachal Pradesh. Our mission is to bridge the gap between citizens in distress and the emergency personnel equipped to save them, leveraging technology to minimize response times during critical situations.
+            </Typography>
+          </Box>
+
+          <Grid container spacing={2.5}>
+            {[
+              { title: 'Live Incident Mapping', desc: 'Real-time tracking of emergencies across the state to coordinate rapid dispatch.', color: '#3B82F6', bg: '#EFF6FF' },
+              { title: 'Resource Management', desc: 'Centralized dashboard for tracking equipment, vehicles, and medical supplies.', color: '#10B981', bg: '#ECFDF5' },
+              { title: 'Volunteer Network', desc: 'Connecting trained civilian volunteers with SDRF teams for localized assistance.', color: '#F97316', bg: '#FFF7ED' },
+              { title: 'SOS Alert System', desc: 'Instant one-tap emergency reporting system for citizens in danger.', color: '#EF4444', bg: '#FEF2F2' },
+            ].map((item, i) => (
+              <Grid item xs={12} sm={6} key={i}>
+                <Box sx={{ p: 2.5, bgcolor: item.bg, borderRadius: 3, height: '100%', transition: 'transform 0.2s ease', '&:hover': { transform: 'translateY(-2px)' } }}>
+                  <Typography sx={{ fontWeight: 800, color: item.color, mb: 0.5, fontSize: '0.95rem' }}>{item.title}</Typography>
+                  <Typography sx={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>{item.desc}</Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
+
       {/* ─── 4. TRUST BADGES ROW ─── */}
       <Box sx={{ bgcolor: '#EFF6FF', py: 2, borderTop: '1px solid #BFDBFE' }}>
         <Container maxWidth="xl">

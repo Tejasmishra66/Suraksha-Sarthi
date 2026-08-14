@@ -19,6 +19,7 @@ const PageWrapper = ({ children }) => (
 // Lazy load pages for fast rendering on weak networks
 const Homepage = lazy(() => import('./pages/SimpleHomepage'));
 const EmergencyPage = lazy(() => import('./pages/EmergencyPage'));
+const PublicEmergencyPage = lazy(() => import('./pages/PublicEmergencyPage'));
 const VolunteerPage = lazy(() => import('./pages/VolunteerPage'));
 const IncidentMapPage = lazy(() => import('./pages/IncidentMapPage'));
 const UpdatesPage = lazy(() => import('./pages/UpdatesPage'));
@@ -28,7 +29,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const SecurityLogsPage = lazy(() => import('./pages/SecurityLogsPage'));
 const SignupPage = lazy(() => import('./pages/SignupPage'));
 const VolunteerRegistrationPage = lazy(() => import('./pages/VolunteerRegistrationPage'));
-const AboutPage = lazy(() => import('./pages/AboutPage'));
+
 const DisasterGuidesPage = lazy(() => import('./pages/DisasterGuidesPage'));
 const EmergencyContactsPage = lazy(() => import('./pages/EmergencyContactsPage'));
 const MediaPage = lazy(() => import('./pages/MediaPage'));
@@ -92,6 +93,7 @@ export default function App() {
                   <Route path="/home" element={<PageWrapper><Homepage /></PageWrapper>} />
                   <Route path="/login" element={<PageWrapper><LoginPage /></PageWrapper>} />
                   <Route path="/signup" element={<PageWrapper><SignupPage /></PageWrapper>} />
+                  <Route path="/public-emergency" element={<PageWrapper><PublicEmergencyPage /></PageWrapper>} />
                   
                   {/* Citizen & Above Routes */}
                   <Route path="/emergency" element={
@@ -119,11 +121,7 @@ export default function App() {
                       <PageWrapper><UpdatesPage /></PageWrapper>
                     </ProtectedRoute>
                   } />
-                  <Route path="/about" element={
-                    <ProtectedRoute>
-                      <PageWrapper><AboutPage /></PageWrapper>
-                    </ProtectedRoute>
-                  } />
+
                   <Route path="/media" element={
                     <ProtectedRoute>
                       <PageWrapper><MediaPage /></PageWrapper>

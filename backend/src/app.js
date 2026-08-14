@@ -61,6 +61,10 @@ app.use(cors({
     if (/^http:\/\/(10|192\.168|172\.(1[6-9]|2[0-9]|3[0-1]))\.\d+\.\d+\.\d+:\d+$/.test(origin)) {
       return callback(null, true);
     }
+    // Allow VS Code dev tunnels
+    if (/\.devtunnels\.ms$/.test(new URL(origin).hostname)) {
+      return callback(null, true);
+    }
     return callback(new Error(`CORS: origin '${origin}' is not allowed`), false);
   },
   credentials: true,
